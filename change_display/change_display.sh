@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 
 BACKTITLE="OlinuXino screen configurator"
 
 temp_dir="/tmp/screen"
-mmc_dir="/mnt/mmc"
+mmc_dir="/tmp/mmc"
 sunxi_tools_dir="/opt/sunxi-tools"
 bin_file="script.bin"
 fex_file="script.fex"
@@ -30,9 +30,9 @@ LCD_X="lcd_x"
 # <null> -> There is no such word
 #
 # Note: Only the first coincidence is returned
-function find_word()
+function find_word
 {
-	echo=$(grep -nr -m 1 "$1" $temp_dir/$fex_file | awk '{print$1}' FS=":")
+	echo $(grep -nr -m 1 "$1" $temp_dir/$fex_file | awk '{print$1}' FS=":")
 }
 
 # Find parameter and set its value
@@ -41,8 +41,8 @@ function find_word()
 #	$2	new value
 #
 # Note: if a parameter is present in multiple places only the first is replaced.
-function change_parameter()
-{	
+function change_parameter
+{
 	# Find line number
 	local line=$(find_word $1)
 	
@@ -51,6 +51,7 @@ function change_parameter()
 	then
 		dialog --infobox "Cannot find $1 variable!" 0 0
 		sleep 2
+		cleanup
 		exit
 	fi
 	
@@ -65,17 +66,11 @@ function change_parameter()
 # Return:
 #	0 -> "YES" is pressed
 #	1 -> "NO" is pressed 
-function display_confirm()
+function display_confirm
 {
-	dialog --title "Confirmation" --backtitle $BACKTITLE --yesno $1 0 0
-    case $? in
-    	0)
-    		echo 0
-		;;
-    	1|255)
-    		echo 1
-		;;
-    esac
+	local __result=$2
+	dialog --title "Confirmation" --backtitle "$BACKTITLE" --yesno "$1" 0 0
+	eval $__result=$?
 }
 
 # Insert a line after matching word
@@ -83,16 +78,17 @@ function display_confirm()
 # $1	<Word>	to be searched
 # $2 	<Parameter> to be inserted
 # $3	<Value>
-function insert_after()
+function insert_after
 {
 	# Find word
 	local line=$(find_word $1)
 	
 	# Chech if it's unset
-	if[ -z $line ];
+	if [ -z $line ];
 	then
 		dialog --infobox "Cannot find $1 variable!" 0 0
 		sleep 2
+		cleanup
 		exit
 	else
 		sed -i $line'a\'$2' = '$3'' $temp_dir/$fex_file
@@ -102,16 +98,17 @@ function insert_after()
 
 
 set_screen_none() {
-	if [ $(display_confirm "Disable screen ?") -eq 1 ];
+	display_confirm "Disable screen ?" result
+	if [ $result -eq 0 ];
 	then
-	   	change_parameter "screen0_output_type" "0"
+		change_parameter "screen0_output_type" "0"
 	fi
 }
 
 set_screen_hdmi() {
     
-    dialog --backtitle $BACKTITLE \
-    --menu "Select screen mode:" 12 55 8 \
+    dialog --backtitle "$BACKTITLE" \
+    --menu "Select screen mode:" 0 0 0 \
     0	"480i"		 \
     1	"576i"		 \
     2	"480p"		 \
@@ -133,96 +130,110 @@ set_screen_hdmi() {
 	if [ $retv -eq 1 -o $retv -eq 255 ];
 	then
 		clear
+		cleanup
 		exit
 	fi
 
 	case $choice in
 		0)
-			if [ $(display_confirm "Set HDMI to 480i ?") -eq 1 ];
+			display_confirm "Set HDMI to 480i ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
 		1)
-			if [ $(display_confirm "Set HDMI to 576i ?") -eq 1 ];
+			display_confirm "Set HDMI to 576i ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
 		2)
-			if [ $(display_confirm "Set HDMI to 480p ?") -eq 1 ];
+			display_confirm "Set HDMI to 480p ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
 		3)
-			if [ $(display_confirm "Set HDMI to 576p ?") -eq 1 ];
+			display_confirm "Set HDMI to 576p ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
 		4)
-			if [ $(display_confirm "Set HDMI to 720p50 ?") -eq 1 ];
+			display_confirm "Set HDMI to 720p50 ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
 		5)
-			if [ $(display_confirm "Set HDMI to 720p60 ?") -eq 1 ];
+			display_confirm "Set HDMI to 720p60 ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
 		6)
-			if [ $(display_confirm "Set HDMI to 1080i50 ?") -eq 1 ];
+			display_confirm "Set HDMI to 1080i50 ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
 		7)
-			if [ $(display_confirm "Set HDMI to 1080i60 ?") -eq 1 ];
+			display_confirm "Set HDMI to 1080i60 ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
 		8)
-			if [ $(display_confirm "Set HDMI to 1080p24 ?") -eq 1 ];
+			display_confirm "Set HDMI to 1080p24 ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
 		9)
-			if [ $(display_confirm "Set HDMI to 1080p50 ?") -eq 1 ];
+			display_confirm "Set HDMI to 1080p50 ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
 		10)
-			if [ $(display_confirm "Set HDMI to 1080p60 ?") -eq 1 ];
+			display_confirm "Set HDMI to 1080p60 ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
 		11)
-			if [ $(display_confirm "Set HDMI to pal ?") -eq 1 ];
+			display_confirm "Set HDMI to pal ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
 		14)
-			if [ $(display_confirm "Set HDMI to ntsc ?") -eq 1 ];
+			display_confirm "Set HDMI to ntsc ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "3"
     			change_parameter "screen0_output_mode" $choice
@@ -235,7 +246,7 @@ set_screen_hdmi() {
 
 set_screen_vga() {
     
-    dialog --backtitle $BACKTITLE \
+    dialog --backtitle "$BACKTITLE" \
     --menu "Select screen mode:" 0 0 0 \
     0	"1680x1050"	 \
     1	"1440x900"	 \
@@ -254,70 +265,80 @@ set_screen_vga() {
 	if [ $retv -eq 1 -o $retv -eq 255 ];
 	then
 		clear
+		cleanup
 		exit
 	fi
 
 	#sed -i $line's/.*/screen0_output_type = 4/' $temp_dir/$fex_file
 	case $choice in
 		0)
-			if [ $(display_confirm "Set VGA to 1680x1050 ?") -eq 1 ];
+			display_confirm "Set VGA to 1680x1050 ?" result
+    		if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
     	1)
-			if [ $(display_confirm "Set VGA to 1440x900 ?") -eq 1 ];
+			display_confirm "Set VGA to 1440x900 ?" result
+			if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
     	2)
-			if [ $(display_confirm "Set VGA to 1360x768 ?") -eq 1 ];
+			display_confirm "Set VGA to 1360x768 ?" result
+			if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
     	3)
-			if [ $(display_confirm "Set VGA to 1280x1024 ?") -eq 1 ];
+			display_confirm "Set VGA to 1280x1024 ?" result
+			if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
     	4)
-			if [ $(display_confirm "Set VGA to 1024x768 ?") -eq 1 ];
+			display_confirm "Set VGA to 1024x768 ?" result
+			if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
     	5)
-			if [ $(display_confirm "Set VGA to 800x600 ?") -eq 1 ];
+			display_confirm "Set VGA to 800x600 ?" result
+			if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
     	6)
-			if [ $(display_confirm "Set VGA to 640x480 ?") -eq 1 ];
+			display_confirm "Set VGA to 640x480 ?" result
+			if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
     	10)
-			if [ $(display_confirm "Set VGA to 1920x1080 ?") -eq 1 ];
+			display_confirm "Set VGA to 1920x1080 ?" result
+			if [ $result -eq 0 ];
 			then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
     	11)
-			if [ $(display_confirm "Set VGA to 1280x720 ?") -eq 1 ];
-			then
+    		display_confirm "Set VGA to 1280x720 ?" result
+    		if [ $result -eq 0 ];
+    		then
 			   	change_parameter "screen0_output_type" "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
@@ -329,8 +350,7 @@ set_screen_vga() {
 
 set_screen_lcd() {
 
-	dialog --backtitle $BACKTITLE \
-    --menu "Select screen mode:" 0 0 0 \
+	dialog --backtitle "$BACKTITLE" --menu "Select screen mode:" 0 0 0 \
     "4.3"	"480x272"	 \
     "7.0"	"800x480"	 \
     "10.3"	"1024x600"	 \
@@ -344,6 +364,7 @@ set_screen_lcd() {
 	if [ $retv -eq 1 -o $retv -eq 255 ];
 	then
     	clear
+    	cleanup
     	exit
     fi
   
@@ -455,7 +476,8 @@ set_screen_lcd() {
     ;;
     esac
     
-    if [ $(display_confirm "Set LCD to '$x'x'$y' ?") -eq 1 ];
+    display_confirm "Set LCD to '$x'x'$y' ?" result
+    if [ $result -eq 0 ];
 	then
 	   	change_parameter "screen0_output_type" "1"
 	   	change_parameter "lcd_x" $x
@@ -478,23 +500,99 @@ set_screen_lcd() {
 	   	change_parameter "lcd_frm" $lcd_frm
 	   	change_parameter "screen0_output_type" "1"
 	   	change_parameter "screen0_output_type" "1"
+	   	
+	   	if [ "$choice" = "15.6" ] || [ "$choice" = "15.6-FHD" ];
+		then
+			if [ -z $(find_word "pll3") ];
+			then
+				insert_after "clock" "pll3" "297"
+			else
+				change_parameter "pll3" "297"
+			fi	
+		fi
 	fi
 
-	if [ "$choice" = "15.6" ] || [ "$choice" = "15.6-FHD" ];
-	then
-		if [ -z $(find_word "pll3") ];
-		then
-			insert_after "clock" "pll3" "297"
-		else
-			change_parameter "pll3" "297"
-		fi	
-	fi
+	
     
 }
 
-MAIN() {
-	dialog --backtitle $BACKTITLE \
-	--menu "Select output type:" 12 55 8 \
+function check_tools
+{
+	# Checking if there is sunxi tools
+	if [ ! -f $sunxi_tools_dir/fex2bin -o ! -f $sunxi_tools_dir/bin2fex ];
+	then
+		echo "There is no sunxi-tools installed."
+		exit
+	fi
+	
+	# Checking for mount directory
+	if [ ! -d $mmc_dir ];
+	then
+		mkdir -p $mmc_dir
+	fi
+	
+	# Checking for mount directory
+	if [ ! -d $temp_dir ];
+	then
+		mkdir -p $temp_dir
+	fi
+}
+
+function read_script
+{
+	# Unmount mmcblk0p1
+	umount /dev/mmcblk0p1 > /dev/null 2>&1
+	
+	# Mounting
+	mount /dev/mmcblk0p1 $mmc_dir > /dev/null 2>&1
+	
+	# Converting	
+	($sunxi_tools_dir/bin2fex $mmc_dir/$bin_file > $temp_dir/$fex_file) > /dev/null 2>&1
+	
+	# Syncing
+	sync
+	
+	sleep 1
+	
+	# Unmound
+	umount /dev/mmcblk0p1 > /dev/null 2>&1
+	
+}
+
+function write_script
+{	
+	# Unmount mmcblk0p1
+	umount /dev/mmcblk0p1 > /dev/null 2>&1
+	
+	# Mounting
+	mount /dev/mmcblk0p1 $mmc_dir > /dev/null 2>&1
+	
+	# Converting	
+	($sunxi_tools_dir/fex2bin $temp_dir/$fex_file $mmc_dir/$bin_file) > /dev/null 2>&1
+	
+	# Syncing
+	sync
+	
+	sleep 1
+	
+	# Unmound
+	umount /dev/mmcblk0p1 > /dev/null 2>&1
+}
+
+function cleanup
+{
+	rm -rf $temp_dir
+	rm -rf $mmc_dir
+
+	rm -f $tempfile1
+	rm -f $tempfile2
+	rm -f $tempfile3
+	rm -f $tempfile4
+}
+
+function main
+{
+	dialog --backtitle "$BACKTITLE" --menu "Select output type:" 0 0 0 \
 	"None" "Disable all screens" \
 	"LCD" "Set configuration for LCD" \
 	"HDMI" "Set configuration for HDMI" \
@@ -506,97 +604,43 @@ MAIN() {
 	# Check if ESC of CANCLE are pressed
 	if [ $retv -eq 1 -o $retv -eq 255 ];
 	then
+		cleanup
 		clear
 		exit
 	fi
 
+		
+	
 	# Check selected option
 	case $choice in
 		"None")
-			SET_NONE
+			set_screen_none
 		;;
 	    "LCD")
-	    	SET_LCD
+	    	set_screen_lcd
 	    ;;
 	    "HDMI")
-	    	SET_HDMI
+	    	set_screen_hdmi
 	    ;;
 	    "VGA")
-	    SET_VGA
+	    	set_screen_vga
 	    ;;
 	esac
 	trap "rm -f $tempfile1" 0 1 2 5 15
+	
+	write_script
+	
+	displadisplay_confirm "Reboot ?" result
+    if [ $result -eq 0 ];
+    then
+    	cleanup
+     	reboot
+	fi	
+	
+}
 
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
-	#Export PATH
-	#Check for /opt/sunxi-tools
-if [ ! -d $sunxi_tools_dir ];
-then
-  dialog --infobox "No sunxi-tools found!" 3 26
-  sleep 2
-  clear
-  exit
-fi
-export PATH=$PATH:$sunxi_tools_dir
+check_tools
+main
+cleanup
+clear
 
-# Check for /mnt/mmc
-if [ ! -d $mmc_dir ];
-then
-  mkdir -p $mmc_dir
-fi
-
-# Check for /mnt/mmc
-if [ ! -d $temp_dir ];
-then
-  mkdir -p $temp_dir
-fi
-
-mount /dev/mmcblk0p1 $mmc_dir
-sleep 1
-if [ $? -ne 0 ];
-then
-  dialog --infobox "Failed to mount sd-card" 0 0
-  sleep 2
-  exit
-fi
-  
-
-# Copy current script
-cp $mmc_dir/$bin_file $temp_dir/
-
-
-
-# bin2fex
-bin2fex $temp_dir/$bin_file > $temp_dir/$fex_file
-
-
-# Remove binfile
-rm $temp_dir/$bin_file
-
-MAIN
-
-# Adding timestamp
-TIME=$(date)
-sed -i "\$a;LAST EDITED: $TIME" $temp_dir/$fex_file
-
-
-
-# make the bin file
-fex2bin $temp_dir/$fex_file > $temp_dir/$bin_file
-
-
-# Copy current script
-cp -vf $temp_dir/$bin_file $mmc_dir
-
-
-# Unmount
-umount /dev/mmcblk0p1
-
-
-rm -rf $temp_dir
-
-dialog --title "Reboot" --yesno "Reboot the board? " 0 0
-case $? in
-  0) 		reboot;;
-  1|255) 	clear;;
-esac  
