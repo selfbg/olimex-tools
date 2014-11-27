@@ -13,10 +13,6 @@ tempfile2=/tmp/dialog_2_$$
 tempfile3=/tmp/dialog_3_$$
 tempfile4=/tmp/dialog_4_$$
 
-# Define variable names.
-# It's important that they match the ones in the fex file.
-# If you have old version of the configuration file they might mismatct, so edit this section.
-LCD_X="lcd_x"
 
 # Define some functions
 
@@ -609,7 +605,7 @@ function main
 		exit
 	fi
 
-		
+	read_script
 	
 	# Check selected option
 	case $choice in
@@ -630,7 +626,7 @@ function main
 	
 	write_script
 	
-	displadisplay_confirm "Reboot ?" result
+	display_confirm "Reboot ?" result
     if [ $result -eq 0 ];
     then
     	cleanup
