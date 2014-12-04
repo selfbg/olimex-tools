@@ -2,11 +2,27 @@
 
 BACKTITLE="OlinuXino screen configurator"
 
-temp_dir="/tmp/screen"
-mmc_dir="/tmp/mmc"
-sunxi_tools_dir="/opt/sunxi-tools"
-bin_file="script.bin"
-fex_file="script.fex"
+# Define directories
+TEMP_DIR=${TEMP_DIR=:"/tmp/screen"}
+MMC_DIR=${MMC_DIR=:"/tmp/mmc"}
+SUNXI_DIR=${SUNXI_DIR=:"/opt/sunxi-tools"}
+
+# Define tools
+BIN2FEX=${BIN2FEX=:"$SUNXI_DIR/bin2fex"}
+FEX2BIN=${FEX2BIN=:"$SUNXI_DIR/fex2bin"}
+
+# Define script files
+BIN_FILE=${BIN_DILE=:"$MMC_DIR/script.bin"}
+FEX_FILE=${FEX_FILE=:"$TEMP_DIR/script.fex"}
+
+echo \$TEMP_DIR" -> "$TEMP_DIR
+echo \$MMC_DIR" -> "$MMC_DIR
+echo \$SUNXI_DIR" -> "$SUNXI_DIR
+echo \$BIN2FEX" -> "$BIN2FEX
+echo \$FEX2BIN" -> "$FEX2BIN
+echo \$BIN_FILE" -> "$BIN_FILE
+echo \$FEX_FILE" -> "$FEX_FILE
+
 
 tempfile1=/tmp/dialog_1_$$
 tempfile2=/tmp/dialog_2_$$
@@ -28,7 +44,7 @@ tempfile4=/tmp/dialog_4_$$
 # Note: Only the first coincidence is returned
 function find_word
 {
-	echo $(grep -nr -m 1 "$1" $temp_dir/$fex_file | awk '{print$1}' FS=":")
+	echo $(grep -nr -m 1 "$1" $FEX_FILE | awk '{print$1}' FS=":")
 }
 
 # Find parameter and set its value
@@ -52,7 +68,7 @@ function change_parameter
 	fi
 	
 	# Replace parameter
-	sed -i $line's/.*/'$1' = '$2'/' $temp_dir/$fex_file
+	sed -i $line's/.*/'$1' = '$2'/' $FEX_FILE
 }
 
 
@@ -87,7 +103,7 @@ function insert_after
 		cleanup
 		exit
 	else
-		sed -i $line'a\'$2' = '$3'' $temp_dir/$fex_file
+		sed -i $line'a\'$2' = '$3'' $FEX_FILE
 	fi
 }
 
@@ -265,7 +281,7 @@ set_screen_vga() {
 		exit
 	fi
 
-	#sed -i $line's/.*/screen0_output_type = 4/' $temp_dir/$fex_file
+	#sed -i $line's/.*/screen0_output_type = 4/' $TEMP_DIR/$FEX_FILE
 	case $choice in
 		0)
 			display_confirm "Set VGA to 1680x1050 ?" result
@@ -515,70 +531,70 @@ set_screen_lcd() {
 function check_tools
 {
 	# Checking if there is sunxi tools
-	if [ ! -f $sunxi_tools_dir/fex2bin -o ! -f $sunxi_tools_dir/bin2fex ];
+	if [ ! -f $FEX2BIN -o ! -f $BIN2FEX ];
 	then
 		echo "There is no sunxi-tools installed."
 		exit
 	fi
 	
 	# Checking for mount directory
-	if [ ! -d $mmc_dir ];
+	if [ ! -d $MMC_DIR ];
 	then
-		mkdir -p $mmc_dir
+		mkdir -p $MMC_DIR
 	fi
 	
 	# Checking for mount directory
-	if [ ! -d $temp_dir ];
+	if [ ! -d $TEMP_DIR ];
 	then
-		mkdir -p $temp_dir
+		mkdir -p $TEMP_DIR
 	fi
 }
 
 function read_script
 {
 	# Unmount mmcblk0p1
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
+	#umount /dev/mmcblk0p1 > /dev/null 2>&1
 	
 	# Mounting
-	mount /dev/mmcblk0p1 $mmc_dir > /dev/null 2>&1
+	#mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
 	
 	# Converting	
-	($sunxi_tools_dir/bin2fex $mmc_dir/$bin_file > $temp_dir/$fex_file) > /dev/null 2>&1
+	($BIN2FEX $BIN_FILE > $FEX_FILE) > /dev/null 2>&1
 	
 	# Syncing
-	sync
+	#sync
 	
-	sleep 1
+	#sleep 1
 	
 	# Unmound
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
+	#umount /dev/mmcblk0p1 > /dev/null 2>&1
 	
 }
 
 function write_script
 {	
 	# Unmount mmcblk0p1
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
+	#umount /dev/mmcblk0p1 > /dev/null 2>&1
 	
 	# Mounting
-	mount /dev/mmcblk0p1 $mmc_dir > /dev/null 2>&1
+	#mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
 	
 	# Converting	
-	($sunxi_tools_dir/fex2bin $temp_dir/$fex_file $mmc_dir/$bin_file) > /dev/null 2>&1
+	($FEX2BIN $FEX_FILE $BIN_FILE) > /dev/null 2>&1
 	
 	# Syncing
-	sync
+	#sync
 	
-	sleep 1
+	#sleep 1
 	
 	# Unmound
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
+	#umount /dev/mmcblk0p1 > /dev/null 2>&1
 }
 
 function cleanup
 {
-	rm -rf $temp_dir
-	rm -rf $mmc_dir
+	#rm -rf $TEMP_DIR
+	#rm -rf $MMC_DIR
 
 	rm -f $tempfile1
 	rm -f $tempfile2
@@ -635,7 +651,7 @@ function main
 	
 }
 
-check_tools
+#check_tools
 main
 cleanup
 clear
