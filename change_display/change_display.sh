@@ -2,33 +2,47 @@
 
 BACKTITLE="OlinuXino screen configurator"
 
+# Due to different versions of the script.fex file,
+# variable names may missmatch. So define them here
+PARAM_SCREEN0_OUTPUT_TYPE="screen0_output_type"
+PARAM_LCD_X="lcd_x"
+PARAM_LCD_Y="lcd_y"
+PARAM_LCD_DCLK_FREQ="lcd_dclk_freq"
+PARAM_LCD_HBP="lcd_hbp"
+PARAM_LCD_HT="lcd_ht"
+PARAM_LCD_VBP="lcd_vbp"
+PARAM_LCD_VT="lcd_vt"
+PARAM_LCD_VSPW="lcd_hv_vspw"
+PARAM_LCD_HSPW="lcd_hv_hspw"
+PARAM_LCD_IF="lcd_if"
+PARAM_LCD_LVDS_BITWIDTH="lcd_lvds_bitwidth"
+PARAM_LCD_IO_CFG0="lcd_io_cfg0"
+PARAM_LCD_BL_EN_USED="lcd_bl_en_used"
+PARAM_FB0_SCALER_MODE_ENABLE="fb0_scaler_mode_enable"
+PARAM_FB0_WIDTH="fb0_width"
+PARAM_FBO_HEIGHT="fb0_height"
+PARAM_LCD_LVDS_CH="lcd_lvds_ch"
+PARAM_LCD_FRM="lcd_frm"
+PARAM_LCD0_BACKLIGHT="lcd0_backlight"
+
 # Define directories
-TEMP_DIR=${TEMP_DIR=:"/tmp/screen"}
-MMC_DIR=${MMC_DIR=:"/tmp/mmc"}
-SUNXI_DIR=${SUNXI_DIR=:"/opt/sunxi-tools"}
+TEMP_DIR=${TEMP_DIR:="/tmp/screen"}
+MMC_DIR=${MMC_DIR:="/tmp/mmc"}
+SUNXI_DIR=${SUNXI_DIR:="/opt/sunxi-tools"}
 
 # Define tools
-BIN2FEX=${BIN2FEX=:"$SUNXI_DIR/bin2fex"}
-FEX2BIN=${FEX2BIN=:"$SUNXI_DIR/fex2bin"}
+BIN2FEX=${BIN2FEX:="$SUNXI_DIR/bin2fex"}
+FEX2BIN=${FEX2BIN:="$SUNXI_DIR/fex2bin"}
 
 # Define script files
-BIN_FILE=${BIN_DILE=:"$MMC_DIR/script.bin"}
-FEX_FILE=${FEX_FILE=:"$TEMP_DIR/script.fex"}
-
-echo \$TEMP_DIR" -> "$TEMP_DIR
-echo \$MMC_DIR" -> "$MMC_DIR
-echo \$SUNXI_DIR" -> "$SUNXI_DIR
-echo \$BIN2FEX" -> "$BIN2FEX
-echo \$FEX2BIN" -> "$FEX2BIN
-echo \$BIN_FILE" -> "$BIN_FILE
-echo \$FEX_FILE" -> "$FEX_FILE
+BIN_FILE=${BIN_FILE:="$MMC_DIR/script.bin"}
+FEX_FILE=${FEX_FILE:="$TEMP_DIR/script.fex"}
 
 
 tempfile1=/tmp/dialog_1_$$
 tempfile2=/tmp/dialog_2_$$
 tempfile3=/tmp/dialog_3_$$
 tempfile4=/tmp/dialog_4_$$
-
 
 # Define some functions
 
@@ -53,6 +67,7 @@ function find_word
 #	$2	new value
 #
 # Note: if a parameter is present in multiple places only the first is replaced.
+
 function change_parameter
 {
 	# Find line number
@@ -113,7 +128,7 @@ set_screen_none() {
 	display_confirm "Disable screen ?" result
 	if [ $result -eq 0 ];
 	then
-		change_parameter "screen0_output_type" "0"
+		change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "0"
 	fi
 }
 
@@ -151,7 +166,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 480i ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -159,7 +174,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 576i ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -167,7 +182,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 480p ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -175,7 +190,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 576p ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -183,7 +198,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 720p50 ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -191,7 +206,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 720p60 ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -199,7 +214,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 1080i50 ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -207,7 +222,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 1080i60 ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -215,7 +230,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 1080p24 ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -223,7 +238,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 1080p50 ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -231,7 +246,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to 1080p60 ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -239,7 +254,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to pal ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -247,7 +262,7 @@ set_screen_hdmi() {
 			display_confirm "Set HDMI to ntsc ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "3"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -287,7 +302,7 @@ set_screen_vga() {
 			display_confirm "Set VGA to 1680x1050 ?" result
     		if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -295,7 +310,7 @@ set_screen_vga() {
 			display_confirm "Set VGA to 1440x900 ?" result
 			if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -303,7 +318,7 @@ set_screen_vga() {
 			display_confirm "Set VGA to 1360x768 ?" result
 			if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -311,7 +326,7 @@ set_screen_vga() {
 			display_confirm "Set VGA to 1280x1024 ?" result
 			if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -319,7 +334,7 @@ set_screen_vga() {
 			display_confirm "Set VGA to 1024x768 ?" result
 			if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -327,7 +342,7 @@ set_screen_vga() {
 			display_confirm "Set VGA to 800x600 ?" result
 			if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -335,7 +350,7 @@ set_screen_vga() {
 			display_confirm "Set VGA to 640x480 ?" result
 			if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -343,7 +358,7 @@ set_screen_vga() {
 			display_confirm "Set VGA to 1920x1080 ?" result
 			if [ $result -eq 0 ];
 			then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;
@@ -351,7 +366,7 @@ set_screen_vga() {
     		display_confirm "Set VGA to 1280x720 ?" result
     		if [ $result -eq 0 ];
     		then
-			   	change_parameter "screen0_output_type" "4"
+			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
 			fi
     	;;  
@@ -361,7 +376,6 @@ set_screen_vga() {
 }
 
 set_screen_lcd() {
-
 	dialog --backtitle "$BACKTITLE" --menu "Select screen mode:" 0 0 0 \
     "4.3"	"480x272"	 \
     "7.0"	"800x480"	 \
@@ -379,7 +393,7 @@ set_screen_lcd() {
     	cleanup
     	exit
     fi
-  
+    
 	case $choice in
     "4.3")
 	    x=480
@@ -391,7 +405,6 @@ set_screen_lcd() {
 	    vt=576
 	    vspw=5
 	    hspw=30
-	    #extra options
 	    lcd_if=0
 	    lcd_lvds_bitwidth=0
 	    lcd_lvds_ch=0
@@ -401,6 +414,7 @@ set_screen_lcd() {
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
 	    fb0_height=0
+	    lcd_backlight=240
     ;;
     "7.0")
 	    x=800
@@ -412,7 +426,7 @@ set_screen_lcd() {
 	    vt=1050
 	    vspw=1
 	    hspw=30
-	    #extra options
+	    lcd_backlight=0
 	    lcd_if=0
 	    lcd_lvds_bitwidth=0
 	    lcd_lvds_ch=0
@@ -421,7 +435,7 @@ set_screen_lcd() {
 	    lcd_bl_en_used=1
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
-	    fb0_height=0
+	    fb0_height=240
     ;;
     "10.3")
 	    x=1024
@@ -433,7 +447,6 @@ set_screen_lcd() {
 	    vt=1250
 	    vspw=2
 	    hspw=10
-	    #extra options
 	    lcd_if=0
 	    lcd_lvds_bitwidth=0
 	    lcd_lvds_ch=0
@@ -443,6 +456,7 @@ set_screen_lcd() {
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
 	    fb0_height=0
+	    lcd_backlight=240
     ;;
 	"15.6")
 	    x=1366
@@ -454,7 +468,6 @@ set_screen_lcd() {
 	    vt=1616
 	    vspw=0
 	    hspw=0
-	    #extra options
 	    lcd_if=3
 	    lcd_lvds_bitwidth=1
 	    lcd_lvds_ch=0
@@ -464,6 +477,7 @@ set_screen_lcd() {
 	    fb0_scaler_mode_enable=1
 	    fb0_width=1366
 	    fb0_height=768
+	    lcd_backlight=0
     ;;
     "15.6-FHD")
 	    x=1920
@@ -475,7 +489,6 @@ set_screen_lcd() {
 	    vt=2284
 	    vspw=0
 	    hspw=0
-	    #extra options
 	    lcd_if=3
 	    lcd_lvds_bitwidth=1
 	    lcd_lvds_ch=1
@@ -485,39 +498,40 @@ set_screen_lcd() {
 	    fb0_scaler_mode_enable=1
 	    fb0_width=1920
 	    fb0_height=1080
+	    lcd_backlight=0
     ;;
     esac
     
     display_confirm "Set LCD to '$x'x'$y' ?" result
     if [ $result -eq 0 ];
 	then
-	   	change_parameter "screen0_output_type" "1"
-	   	change_parameter "lcd_x" $x
-	   	change_parameter "lcd_y" $y
-	   	change_parameter "lcd_dclk_freq" $freq
-	   	change_parameter "lcd_hbp" $hbp
-	   	change_parameter "lcd_ht" $ht
-	   	change_parameter "lcd_vbp" $vbp
-	   	change_parameter "lcd_vt" $vt
-	   	change_parameter "lcd_vspw" $vspw
-	   	change_parameter "lcd_hspw" $hspw
-	   	change_parameter "lcd_if" $lcd_if
-	   	change_parameter "lcd_lvds_bitwidth" $lcd_lvds_bitwidth
-	   	change_parameter "lcd_io_cfg0" $lcd_io_cfg0
-	   	change_parameter "lcd_bl_en_used" $lcd_bl_en_used
-	   	change_parameter "fb0_scaler_mode_enable" $fb0_scaler_mode_enable
-	   	change_parameter "fb0_width" $fb0_width
-	   	change_parameter "fb0_height" $fb0_height
-	   	change_parameter "lcd_lvds_ch" $lcd_lvds_ch
-	   	change_parameter "lcd_frm" $lcd_frm
-	   	change_parameter "screen0_output_type" "1"
-	   	change_parameter "screen0_output_type" "1"
+	   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "1"
+	   	change_parameter $PARAM_LCD_X $x
+	   	change_parameter $PARAM_LCD_Y $y
+	   	change_parameter $PARAM_LCD_DCLK_FREQ $freq
+	   	change_parameter $PARAM_LCD_HBP $hbp
+	   	change_parameter $PARAM_LCD_HT $ht
+	   	change_parameter $PARAM_LCD_VBP $vbp
+	   	change_parameter $PARAM_LCD_VT $vt
+	   	change_parameter $PARAM_LCD_VSPW $vspw
+	   	change_parameter $PARAM_LCD_HSPW $hspw
+	   	change_parameter $PARAM_LCD_IF $lcd_if
+	   	change_parameter $PARAM_LCD_LVDS_BITWIDTH $lcd_lvds_bitwidth
+	   	change_parameter $PARAM_LCD_IO_CFG0 $lcd_io_cfg0
+	   	change_parameter $PARAM_LCD_BL_EN_USED $lcd_bl_en_used
+	   	change_parameter $PARAM_FB0_SCALER_MODE_ENABLE $fb0_scaler_mode_enable
+	   	change_parameter $PARAM_FB0_WIDTH $fb0_width
+	   	change_parameter $PARAM_FBO_HEIGHT $fb0_height
+	   	change_parameter $PARAM_LCD_LVDS_CH $lcd_lvds_ch
+	   	change_parameter $PARAM_LCD_FRM $lcd_frm
+	   	change_parameter $PARAM_LCD0_BACKLIGHT $lcd_backlight
 	   	
 	   	if [ "$choice" = "15.6" ] || [ "$choice" = "15.6-FHD" ];
 		then
+			# Add pll3 parameter
 			if [ -z $(find_word "pll3") ];
 			then
-				insert_after "clock" "pll3" "297"
+				insert_after "\[clock]" "pll3" "297"
 			else
 				change_parameter "pll3" "297"
 			fi	
@@ -553,48 +567,48 @@ function check_tools
 function read_script
 {
 	# Unmount mmcblk0p1
-	#umount /dev/mmcblk0p1 > /dev/null 2>&1
+	umount /dev/mmcblk0p1 > /dev/null 2>&1
 	
 	# Mounting
-	#mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
+	mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
 	
 	# Converting	
 	($BIN2FEX $BIN_FILE > $FEX_FILE) > /dev/null 2>&1
 	
 	# Syncing
-	#sync
+	sync
 	
-	#sleep 1
+	sleep 1
 	
 	# Unmound
-	#umount /dev/mmcblk0p1 > /dev/null 2>&1
+	umount /dev/mmcblk0p1 > /dev/null 2>&1
 	
 }
 
 function write_script
 {	
 	# Unmount mmcblk0p1
-	#umount /dev/mmcblk0p1 > /dev/null 2>&1
+	umount /dev/mmcblk0p1 > /dev/null 2>&1
 	
 	# Mounting
-	#mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
+	mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
 	
 	# Converting	
 	($FEX2BIN $FEX_FILE $BIN_FILE) > /dev/null 2>&1
 	
 	# Syncing
-	#sync
+	sync
 	
-	#sleep 1
+	sleep 1
 	
 	# Unmound
-	#umount /dev/mmcblk0p1 > /dev/null 2>&1
+	umount /dev/mmcblk0p1 > /dev/null 2>&1
 }
 
 function cleanup
 {
-	#rm -rf $TEMP_DIR
-	#rm -rf $MMC_DIR
+	rm -rf $TEMP_DIR
+	rm -rf $MMC_DIR
 
 	rm -f $tempfile1
 	rm -f $tempfile2
@@ -651,7 +665,7 @@ function main
 	
 }
 
-#check_tools
+check_tools
 main
 cleanup
 clear
