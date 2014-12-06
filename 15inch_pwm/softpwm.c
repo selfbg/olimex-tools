@@ -22,83 +22,27 @@ struct softpwm_priv {
 
 /* Number of pwm in fex file */
 static int pwm_num;
-static struct softpwm_platform_data *ppwm;
-static struct platform_device *pdev;
 
+static struct softpwm_platform_data *p_softpwm_platform_data;
+static struct platform_device *p_platform_device;
 
-
-
-static struct timer_list softpwm_timer;
-static struct class *softpwm_class;
-static struct device *softpwm_device_object;
-
-
-
-
-
-static ssize_t set_duty_callback(struct device* dev, struct device_attribute* attr, const char* buf, size_t count)
-{
-	long duty = 0;
-	if(kstrtol(buf, 10, &duty) < 0){
-		return -EINVAL;
-	}
-	if(duty > 100 || duty < 0){
-		return -EINVAL;
-	}
-	printk(KERN_DEBUG "%s: set duty to %d\n", __FUNCTION__, (unsigned char)duty);
-
-	return count;
-}
-static void softpwm_timer_handler(unsigned long arg)
-{
-	printk(KERN_DEBUG "%s\n", __FUNCTION__);
-	mod_timer(&softpwm_timer, jiffies + msecs_to_jiffies(1000));
-}
-
-static DEVICE_ATTR(duty, S_IWUSR | S_IWGRP | S_IWOTH, NULL, set_duty_callback);
 
 
 /* Probe the driver */
 static int __devinit softpwm_probe(struct platform_device *pdev)
 {
 	printk(KERN_DEBUG "%s()\n", __FUNCTION__);
-
-	setup_timer(&softpwm_timer, softpwm_timer_handler, 0);
-	mod_timer(&softpwm_timer, jiffies + msecs_to_jiffies(500));
-
-//	softPWM_class = class_create(THIS_MODULE, "softpwm");
-//	if(IS_ERR(softPWM_class)){
-//		return PTR_ERR(softPWM_class);
-//	}
-//
-//	softPWM_device_object = device_create(softPWM_class, NULL, 0, NULL, "softpwm");
-//	if(IS_ERR(softPWM_device_object)){
-//		return PTR_ERR(softPWM_device_object);
-//	}
-
-
-
-
 	return 0;
 }
 
 
 static int __devexit softpwm_remove(struct platform_device *pdev)
 {
-	struct softpwm_platform_data *pdata = pdev->dev.platform_data;
-
 	printk(KERN_DEBUG "%s()\n", __FUNCTION__);
 
-	gpio_release(pdata->gpio_handler, 0);
 
-//	device_remove_file(softpwm_device_object, &dev_attr_duty);
-//	device_destroy(softpwm_class, 0);
-//	class_destroy(softpwm_class);
+	kfree(p_platform_device->dev.platform_data);
 
-//	del_timer(&softpwm_timer);
-
-//	kfree(pdev->dev.platform_data);
-	platform_device_unregister(pdev);
 
 	return 0;
 
@@ -141,16 +85,16 @@ static ssize_t __init softpwm_init(void)
 	}
 
 	/* Allocate memory */
-	ppwm = kzalloc(sizeof(struct softpwm_platform_data) * pwm_num,
+	p_softpwm_platform_data = kzalloc(sizeof(struct softpwm_platform_data) * pwm_num,
 				GFP_KERNEL);
 
-	if (!ppwm) {
+	if (!p_softpwm_platform_data) {
 		printk(KERN_DEBUG "%s: failed to kzalloc memory\n", __FUNCTION__);
 		err = -ENOMEM;
 		goto exit;
 	}
 
-	pwm_i = ppwm;
+	pwm_i = p_softpwm_platform_data;
 
 	/* Request all needed pins */
 	for(i = 0; i < pwm_num; i++){
@@ -193,19 +137,25 @@ static ssize_t __init softpwm_init(void)
 		pwm_i++;
 	}
 
-	pdev = platform_device_register_simple("softpwm", 0, NULL, 0);
-	pdev->dev.platform_data = kzalloc(sizeof(struct softpwm_platform_data), GFP_KERNEL);
+	p_platform_device = platform_device_alloc("softpwm", -1);
+	if (!p_platform_device)
+		goto exit;
+
+	err = platform_device_add(p_platform_device);
+	if (err)
+		goto exit;
+
 	return platform_driver_register(&softpwm_driver);
 
 exit:
 	if (err != -ENOMEM) {
 
 		for (i = 0; i < pwm_num; i++) {
-			if (ppwm[i].gpio_handler)
-				gpio_release(ppwm[i].gpio_handler, 1);
+			if (p_softpwm_platform_data[i].gpio_handler)
+				gpio_release(p_softpwm_platform_data[i].gpio_handler, 1);
 		}
 
-		kfree(ppwm);
+		kfree(p_softpwm_platform_data);
 		return err;
 	}
 
@@ -216,9 +166,18 @@ exit:
 /* Exit function */
 static void __exit softpwm_exit(void)
 {
+	int i;
+
 	printk(KERN_DEBUG "%s()\n", __FUNCTION__);
 
 	platform_driver_unregister(&softpwm_driver);
+	printk(KERN_DEBUG "%s: driver unregistered\n", __func__);
+
+	platform_device_unregister(p_platform_device);
+	printk(KERN_DEBUG "%s: device unregistered\n", __func__);
+	for(i = 0; i < pwm_num; i++){
+//		if()
+	}
 
 }
 
