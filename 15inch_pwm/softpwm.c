@@ -5,21 +5,36 @@
 #include <linux/err.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 #include <plat/sys_config.h>
-
-
-#define GPIO_INPUT 0
-#define GPIO_OUTPUT 1
 
 struct softpwm_platform_data {
 	unsigned gpio_handler;
 	script_gpio_set_t info;
+	char pin_name[16];
+	char pwm_name[64];
 };
 
+struct softpwm_priv {
+	int num_pwm;
 
-static struct timer_list softPWM_timer;
-static struct class *softPWM_class;
-static struct device *softPWM_device;
+};
+
+/* Number of pwm in fex file */
+static int pwm_num;
+static struct softpwm_platform_data *ppwm;
+static struct platform_device *pdev;
+
+
+
+
+static struct timer_list softpwm_timer;
+static struct class *softpwm_class;
+static struct device *softpwm_device_object;
+
+
+
+
 
 static ssize_t set_duty_callback(struct device* dev, struct device_attribute* attr, const char* buf, size_t count)
 {
@@ -34,41 +49,11 @@ static ssize_t set_duty_callback(struct device* dev, struct device_attribute* at
 
 	return count;
 }
-static void SoftPWMTimerHandler(unsigned long arg)
+static void softpwm_timer_handler(unsigned long arg)
 {
-	mod_timer(&softPWM_timer, jiffies + usecs_to_jiffies(1000));
+	printk(KERN_DEBUG "%s\n", __FUNCTION__);
+	mod_timer(&softpwm_timer, jiffies + msecs_to_jiffies(1000));
 }
-
-//static int make_gpio_output(void)
-//{
-//	int ret;
-//	struct sunxi_gpio_chip *sgpio = to_sunxi_gpio(chip);
-//	ret =  gpio_set_one_pin_io_status(sgpio->data[gpio].gpio_handler,
-//					  GPIO_OUTPUT,
-//					  sgpio->data[gpio].pin_name);
-//	return ret;
-//
-//}
-//
-//static int make_gpio_input(void)
-//{
-//	int ret;
-//	struct sunxi_gpio_chip *sgpio = to_sunxi_gpio(chip);
-//	ret =  gpio_set_one_pin_io_status(sgpio->data[gpio].gpio_handler,
-//					  GPIO_INPUT,
-//					  sgpio->data[gpio].pin_name);
-//	return ret;
-//}
-//
-
-//static ssize_t set_period_callback(struct device* dev, struct device_attribute* attr, const char* buf, size_t count)
-//{
-//	unsigned int period = 0;
-//	if (kstrtol(buf, 10, &period) < 0)
-//		return -EINVAL;
-//
-//	return count;
-//}
 
 static DEVICE_ATTR(duty, S_IWUSR | S_IWGRP | S_IWOTH, NULL, set_duty_callback);
 
@@ -76,50 +61,22 @@ static DEVICE_ATTR(duty, S_IWUSR | S_IWGRP | S_IWOTH, NULL, set_duty_callback);
 /* Probe the driver */
 static int __devinit softpwm_probe(struct platform_device *pdev)
 {
-
-	int err = 0;
-	int ret = 0;
-	int softpwm_used = 0;
-	struct softpwm_platform_data *pdata = pdev->dev.platform_data;
-
 	printk(KERN_DEBUG "%s()\n", __FUNCTION__);
 
-	if(!pdata) {
-		printk(KERN_DEBUG "%s: Invalid platform_data!\n", __FUNCTION__);
-		return -ENXIO;
-	}
+	setup_timer(&softpwm_timer, softpwm_timer_handler, 0);
+	mod_timer(&softpwm_timer, jiffies + msecs_to_jiffies(500));
 
-	err = script_parser_fetch("softpwm_para", "softpwm_used", &softpwm_used, sizeof(softpwm_used)/sizeof(int));
-	if (!softpwm_used || err) {
-		printk(KERN_DEBUG "%s: softpwm is not used in config\n", __FUNCTION__);
-		return -EINVAL;
-	}
-
-	err = script_parser_fetch("softpwm_para", "softpwm_pin", (int *) &pdata->info, sizeof(script_gpio_set_t));
-	if(err){
-		printk(KERN_DEBUG "%s: cannot access gpio handler, already used?\n", __FUNCTION__);
-		return -EBUSY;
-	}
-
-	pdata->gpio_handler = gpio_request_ex("softpwm_para", "softpwm_pin");
-
-	printk(KERN_DEBUG "%s: softpwm registered @ port:%d, num:%d", __FUNCTION__, pdata->info.port, pdata->info.port_num);
+//	softPWM_class = class_create(THIS_MODULE, "softpwm");
+//	if(IS_ERR(softPWM_class)){
+//		return PTR_ERR(softPWM_class);
+//	}
+//
+//	softPWM_device_object = device_create(softPWM_class, NULL, 0, NULL, "softpwm");
+//	if(IS_ERR(softPWM_device_object)){
+//		return PTR_ERR(softPWM_device_object);
+//	}
 
 
-	setup_timer(&softPWM_timer, SoftPWMTimerHandler, 0);
-	mod_timer(&softPWM_timer, jiffies + msecs_to_jiffies(500));
-
-	softPWM_class = class_create(THIS_MODULE, "soft_pwm");
-	if(IS_ERR(softPWM_class)){
-		return PTR_ERR(softPWM_class);
-	}
-
-	softPWM_device = device_create(softPWM_class, NULL, 0, NULL, "soft_pwm");
-	if(IS_ERR(softPWM_device)){
-		return PTR_ERR(softPWM_device);
-	}
-
-	ret = device_create_file(softPWM_device, &dev_attr_duty);
 
 
 	return 0;
@@ -134,11 +91,14 @@ static int __devexit softpwm_remove(struct platform_device *pdev)
 
 	gpio_release(pdata->gpio_handler, 0);
 
-	device_remove_file(softPWM_device, &dev_attr_duty);
-	device_destroy(softPWM_class, 0);
-	class_destroy(softPWM_class);
+//	device_remove_file(softpwm_device_object, &dev_attr_duty);
+//	device_destroy(softpwm_class, 0);
+//	class_destroy(softpwm_class);
 
-	del_timer(&softPWM_timer);
+//	del_timer(&softpwm_timer);
+
+//	kfree(pdev->dev.platform_data);
+	platform_device_unregister(pdev);
 
 	return 0;
 
@@ -157,10 +117,99 @@ static struct platform_driver softpwm_driver = {
 /* Initialization of the driver */
 static ssize_t __init softpwm_init(void)
 {
+	int i;
+	int err;
+	int softpwm_used = 0;
+	struct softpwm_platform_data *pwm_i;
+	char key[20];
 
 	printk(KERN_DEBUG "%s()\n", __FUNCTION__);
 
+	/* Check if softpwm is used */
+	err = script_parser_fetch("softpwm_para", "softpwm_used", &softpwm_used, sizeof(softpwm_used)/sizeof(int));
+	if (!softpwm_used || err) {
+		printk(KERN_DEBUG "%s: softpwm is not used in config\n", __FUNCTION__);
+		return -EINVAL;
+	}
+
+
+	/* Read number of pwm */
+	err = script_parser_fetch("softpwm_para", "softpwm_num", &pwm_num, sizeof(pwm_num)/sizeof(int));
+	if (!pwm_num || err) {
+		printk(KERN_DEBUG "%s: cannot set %d number of pwms\n", __FUNCTION__, pwm_num);
+		return -EINVAL;
+	}
+
+	/* Allocate memory */
+	ppwm = kzalloc(sizeof(struct softpwm_platform_data) * pwm_num,
+				GFP_KERNEL);
+
+	if (!ppwm) {
+		printk(KERN_DEBUG "%s: failed to kzalloc memory\n", __FUNCTION__);
+		err = -ENOMEM;
+		goto exit;
+	}
+
+	pwm_i = ppwm;
+
+	/* Request all needed pins */
+	for(i = 0; i < pwm_num; i++){
+
+		/* Set pwm pin_name */
+		sprintf(pwm_i->pin_name, "softpwm_pin_%d", i+1);
+
+
+		/* Read desired name from fex file */
+		sprintf(key, "softpwm_name_%d", i+1);
+
+		err = script_parser_fetch("softpwm_para", key,
+					  (int *)pwm_i->pwm_name,
+					  sizeof(pwm_i->pwm_name)/sizeof(int));
+		if (err) {
+			printk(KERN_DEBUG "%s: failed to find %s\n", __FUNCTION__, key);
+			goto exit;
+		}
+
+		/* Read GPIO data */
+		sprintf(key, "softpwm_pin_%d", i + 1);
+		err = script_parser_fetch("softpwm_para", key,
+					(int *)&pwm_i->info,
+					sizeof(script_gpio_set_t));
+
+		if (err) {
+			printk(KERN_DEBUG "%s failed to find %s\n", __FUNCTION__, key);
+			break;
+		}
+
+		/* reserve gpio for led */
+		pwm_i->gpio_handler = gpio_request_ex("softpwm_para", key);
+		if (!pwm_i->gpio_handler) {
+			printk(KERN_DEBUG "%s: cannot request %s, already used ?\n", __FUNCTION__, key);
+			break;
+		}
+
+		printk(KERN_DEBUG "%s: softpwm registered @ port:%d, num:%d\n", __FUNCTION__, pwm_i->info.port, pwm_i->info.port_num);
+
+		pwm_i++;
+	}
+
+	pdev = platform_device_register_simple("softpwm", 0, NULL, 0);
+	pdev->dev.platform_data = kzalloc(sizeof(struct softpwm_platform_data), GFP_KERNEL);
 	return platform_driver_register(&softpwm_driver);
+
+exit:
+	if (err != -ENOMEM) {
+
+		for (i = 0; i < pwm_num; i++) {
+			if (ppwm[i].gpio_handler)
+				gpio_release(ppwm[i].gpio_handler, 1);
+		}
+
+		kfree(ppwm);
+		return err;
+	}
+
+	return err;
 }
 
 
