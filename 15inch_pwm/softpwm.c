@@ -175,8 +175,13 @@ static void __exit softpwm_exit(void)
 
 	platform_device_unregister(p_platform_device);
 	printk(KERN_DEBUG "%s: device unregistered\n", __func__);
+
+	/* Release gpios */
 	for(i = 0; i < pwm_num; i++){
-//		if()
+		if(p_softpwm_platform_data[i].gpio_handler){
+			gpio_release(p_softpwm_platform_data[i].gpio_handler, 1);
+			printk(KERN_DEBUG "%s: gpio %s released\n", __func__, p_softpwm_platform_data[i].info.gpio_name);
+		}
 	}
 
 }
