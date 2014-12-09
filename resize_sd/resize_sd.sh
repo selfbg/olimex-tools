@@ -26,8 +26,8 @@ then
 fi
 
 # Find partition name
-local partition_name=$1p$2
-echo "Partition name: $partition_name"
+partition_name=$1p$2
+"Partition name: $partition_name"
 
 if [ ! -b $partition_name ];
 then
@@ -43,7 +43,7 @@ then
 fi
 
 # Find the start point
-local partition_start=`fdisk -l $1 | grep $partition_name | awk '{print $2}'`
+partition_start=`fdisk -l $1 | grep $partition_name | awk '{print $2}'`
 if [ -z $partition_start ];
 then
 	echo "Failed to find the start of partition $partition_name !"
