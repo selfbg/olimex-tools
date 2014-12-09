@@ -6,19 +6,31 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
+
 #include <plat/sys_config.h>
 
+struct duty_cycle {
+	unsigned int period;
+	unsigned int time_on;
+	unsigned int time_off;
+};
 struct softpwm_platform_data {
 	unsigned gpio_handler;
 	script_gpio_set_t info;
 	char pin_name[16];
 	char pwm_name[64];
+	struct timer_list timer;
+	struct duty_cycle duty;
+	ktime_t next_tick;
+
 };
 
-struct softpwm_priv {
-	int num_pwm;
-
-};
+/* Lock protects against softpwm_remove() being called while
+ * sysfs files are active.
+ */
+static DEFINE_MUTEX(sysfs_lock);
 
 /* Number of pwm in fex file */
 static int pwm_num;
@@ -26,12 +38,166 @@ static int pwm_num;
 static struct softpwm_platform_data *p_softpwm_platform_data;
 static struct platform_device *p_platform_device;
 
+static struct class *p_softpwm_class;
+static struct device *p_softpwm_device;
 
+static struct hrtimer hr_timer;
+
+
+/* Check if gpio num requested and valid */
+static int sunxi_gpio_is_valid(unsigned gpio)
+{
+	if (gpio >= pwm_num)
+		return 0;
+
+	if (p_softpwm_platform_data[gpio].gpio_handler)
+		return 1;
+
+	return 0;
+}
+
+/* Get gpio pin value */
+int sunxi_gpio_get_value(unsigned gpio)
+{
+	int  ret;
+	user_gpio_set_t gpio_info[1];
+
+	if (gpio >= pwm_num)
+		return -1;
+
+	if(!sunxi_gpio_is_valid(gpio)){
+		printk(KERN_DEBUG "%s: gpio num %d does not have valid handler\n", __func__, gpio);
+	}
+
+	ret = gpio_get_one_pin_status(p_softpwm_platform_data[gpio].gpio_handler,
+				gpio_info, p_softpwm_platform_data[gpio].pin_name, 1);
+
+	return gpio_info->data;
+}
+
+/* Set pin value (output mode) */
+void sunxi_gpio_set_value(unsigned gpio, int value)
+{
+	int ret ;
+
+	if (gpio >= pwm_num)
+		return;
+
+	if(!sunxi_gpio_is_valid(gpio)){
+		printk(KERN_DEBUG "%s: gpio num %d does not have valid handler\n", __func__, gpio);
+	}
+
+	ret = gpio_write_one_pin_value(p_softpwm_platform_data[gpio].gpio_handler,
+					value, p_softpwm_platform_data[gpio].pin_name);
+
+	return;
+}
+
+static int sunxi_direction_output(unsigned gpio, int value)
+{
+	int ret;
+
+	if (gpio >= pwm_num)
+		return -1;
+
+	if(!sunxi_gpio_is_valid(gpio)){
+		printk(KERN_DEBUG "%s: gpio num %d does not have valid handler\n", __func__, gpio);
+	}
+
+	ret =  gpio_set_one_pin_io_status(p_softpwm_platform_data[gpio].gpio_handler, 1,
+			p_softpwm_platform_data[gpio].pin_name);
+	if (!ret)
+		ret = gpio_write_one_pin_value(p_softpwm_platform_data[gpio].gpio_handler,
+					value, p_softpwm_platform_data[gpio].pin_name);
+
+	return ret;
+}
+
+static void pwm_timer_handler(unsigned long foo)
+{
+	int current_value = sunxi_gpio_get_value(0);
+	if(!current_value){
+		sunxi_gpio_set_value(0, 1);
+		mod_timer(&p_softpwm_platform_data[0].timer,
+				jiffies + usecs_to_jiffies(p_softpwm_platform_data[0].duty.time_on));
+	}else{
+		sunxi_gpio_set_value(0, 0);
+		mod_timer(&p_softpwm_platform_data[0].timer,
+				jiffies + usecs_to_jiffies(p_softpwm_platform_data[0].duty.time_off));
+	}
+}
+
+static int set_duty_callback(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	long duty = 0;
+	unsigned int period;
+	unsigned int time_on, time_off;
+
+	if(kstrtol(buf, 10, &duty) < 0)
+		return -EINVAL;
+	if(duty < 0 || duty > 100)
+		return -EINVAL;
+
+	printk(KERN_DEBUG "%s: setting duty to %d\n", __func__, (int)duty);
+
+	period = p_softpwm_platform_data->duty.period;
+	time_on = (period/100) * duty;
+	time_off = period - time_on;
+
+	printk(KERN_DEBUG "%s: time_on %d\n", __func__, time_on);
+	printk(KERN_DEBUG "%s: time_off %d\n", __func__, time_off);
+
+	p_softpwm_platform_data->duty.time_on = time_on;
+	p_softpwm_platform_data->duty.time_off = time_off;
+
+	return count;
+
+
+}
+/* Device device attributes */
+static DEVICE_ATTR(duty, S_IWUSR | S_IWGRP | S_IWOTH, NULL, set_duty_callback);
 
 /* Probe the driver */
 static int __devinit softpwm_probe(struct platform_device *pdev)
 {
+	int i;
+	int ret;
+
 	printk(KERN_DEBUG "%s()\n", __FUNCTION__);
+	sunxi_direction_output(0, 0);
+
+
+	/* Creating class */
+	printk(KERN_DEBUG "%s: creating new class\n", __func__);
+	p_softpwm_class = class_create(THIS_MODULE, "softpwm");
+
+	/* Allocate memory for devices */
+	p_softpwm_device = kzalloc(sizeof(struct device) * pwm_num, GFP_KERNEL);
+
+	/* Initially period is 1000kHz */
+	for(i = 0; i < pwm_num; i++){
+		p_softpwm_platform_data[i].duty.period = 1000;
+		p_softpwm_platform_data[i].duty.time_on = 1000;
+		p_softpwm_platform_data[i].duty.time_off = 0;
+
+		printk(KERN_DEBUG "%s: creating new device %s\n", __func__, p_softpwm_platform_data[i].pwm_name);
+		p_softpwm_device = device_create(p_softpwm_class,
+				NULL,
+				0,
+				NULL,
+				p_softpwm_platform_data[i].pwm_name);
+
+		BUG_ON(IS_ERR(p_softpwm_device));
+
+		ret = device_create_file(p_softpwm_device, &dev_attr_duty);
+		BUG_ON(ret < 0);
+
+		break;
+	}
+
+	printk(KERN_DEBUG "%s initializating time\n", __func__);
+	setup_timer(&p_softpwm_platform_data[0].timer, pwm_timer_handler, 0);
+	mod_timer(&p_softpwm_platform_data[0].timer, jiffies + usecs_to_jiffies(500));
 	return 0;
 }
 
@@ -40,6 +206,13 @@ static int __devexit softpwm_remove(struct platform_device *pdev)
 {
 	printk(KERN_DEBUG "%s()\n", __FUNCTION__);
 
+
+	del_timer(&p_softpwm_platform_data[0].timer);
+
+	/* Destroy devices */
+	device_remove_file(p_softpwm_device, &dev_attr_duty);
+	device_destroy(p_softpwm_class, 0);
+	class_destroy(p_softpwm_class);
 
 	kfree(p_platform_device->dev.platform_data);
 
@@ -183,7 +356,6 @@ static void __exit softpwm_exit(void)
 			printk(KERN_DEBUG "%s: gpio %s released\n", __func__, p_softpwm_platform_data[i].info.gpio_name);
 		}
 	}
-
 }
 
 module_init(softpwm_init);
