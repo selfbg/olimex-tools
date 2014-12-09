@@ -11,21 +11,10 @@
 
 #include <plat/sys_config.h>
 
-struct duty_cycle {
-	unsigned int period;
-	unsigned int time_on;
-	unsigned int time_off;
-};
-struct softpwm_platform_data {
-	unsigned gpio_handler;
-	script_gpio_set_t info;
-	char pin_name[16];
-	char pwm_name[64];
-	struct timer_list timer;
-	struct duty_cycle duty;
-	ktime_t next_tick;
+#include "softpwm.h"
+#include "softpwm_gpio.h"
 
-};
+
 
 /* Lock protects against softpwm_remove() being called while
  * sysfs files are active.
@@ -44,74 +33,6 @@ static struct device *p_softpwm_device;
 static struct hrtimer hr_timer;
 
 
-/* Check if gpio num requested and valid */
-static int sunxi_gpio_is_valid(unsigned gpio)
-{
-	if (gpio >= pwm_num)
-		return 0;
-
-	if (p_softpwm_platform_data[gpio].gpio_handler)
-		return 1;
-
-	return 0;
-}
-
-/* Get gpio pin value */
-int sunxi_gpio_get_value(unsigned gpio)
-{
-	int  ret;
-	user_gpio_set_t gpio_info[1];
-
-	if (gpio >= pwm_num)
-		return -1;
-
-	if(!sunxi_gpio_is_valid(gpio)){
-		printk(KERN_DEBUG "%s: gpio num %d does not have valid handler\n", __func__, gpio);
-	}
-
-	ret = gpio_get_one_pin_status(p_softpwm_platform_data[gpio].gpio_handler,
-				gpio_info, p_softpwm_platform_data[gpio].pin_name, 1);
-
-	return gpio_info->data;
-}
-
-/* Set pin value (output mode) */
-void sunxi_gpio_set_value(unsigned gpio, int value)
-{
-	int ret ;
-
-	if (gpio >= pwm_num)
-		return;
-
-	if(!sunxi_gpio_is_valid(gpio)){
-		printk(KERN_DEBUG "%s: gpio num %d does not have valid handler\n", __func__, gpio);
-	}
-
-	ret = gpio_write_one_pin_value(p_softpwm_platform_data[gpio].gpio_handler,
-					value, p_softpwm_platform_data[gpio].pin_name);
-
-	return;
-}
-
-static int sunxi_direction_output(unsigned gpio, int value)
-{
-	int ret;
-
-	if (gpio >= pwm_num)
-		return -1;
-
-	if(!sunxi_gpio_is_valid(gpio)){
-		printk(KERN_DEBUG "%s: gpio num %d does not have valid handler\n", __func__, gpio);
-	}
-
-	ret =  gpio_set_one_pin_io_status(p_softpwm_platform_data[gpio].gpio_handler, 1,
-			p_softpwm_platform_data[gpio].pin_name);
-	if (!ret)
-		ret = gpio_write_one_pin_value(p_softpwm_platform_data[gpio].gpio_handler,
-					value, p_softpwm_platform_data[gpio].pin_name);
-
-	return ret;
-}
 
 static void pwm_timer_handler(unsigned long foo)
 {
@@ -125,6 +46,13 @@ static void pwm_timer_handler(unsigned long foo)
 		mod_timer(&p_softpwm_platform_data[0].timer,
 				jiffies + usecs_to_jiffies(p_softpwm_platform_data[0].duty.time_off));
 	}
+}
+
+enum hrtimer_restart softpwm_hrtimer_callback(struct hrtimer *timer){
+	ktime_t now = ktime_get();
+	ktime_t next_tick = ktimer_set(0,0);
+
+	now = ktime_get();
 }
 
 static int set_duty_callback(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -196,8 +124,13 @@ static int __devinit softpwm_probe(struct platform_device *pdev)
 	}
 
 	printk(KERN_DEBUG "%s initializating time\n", __func__);
-	setup_timer(&p_softpwm_platform_data[0].timer, pwm_timer_handler, 0);
-	mod_timer(&p_softpwm_platform_data[0].timer, jiffies + usecs_to_jiffies(500));
+
+	hrtimer_get_res(CLOCK_MONOTONIC, &tp);
+	printk(KERN_DEBUG "%s: clock resolution is %ldns\n", __func__, tp.tv_nsec);
+
+	hrtimer_init(&hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hr_timer.function = &softpwm_hrtimer_callback;
+
 	return 0;
 }
 
@@ -206,8 +139,7 @@ static int __devexit softpwm_remove(struct platform_device *pdev)
 {
 	printk(KERN_DEBUG "%s()\n", __FUNCTION__);
 
-
-	del_timer(&p_softpwm_platform_data[0].timer);
+	hrtimer_cancel(&hr_timer);
 
 	/* Destroy devices */
 	device_remove_file(p_softpwm_device, &dev_attr_duty);
@@ -361,6 +293,5 @@ static void __exit softpwm_exit(void)
 module_init(softpwm_init);
 module_exit(softpwm_exit);
 
-MODULE_AUTHOR("Stefan Mavrodiev <stefan.mavrodiev@gmail.com>");
-MODULE_DESCRIPTION("Soft pwm driver for 15.6inch LCDs on OLinuXino boards");
-MODULE_LICENSE("GPL");
+MODULE_AUTHOR(module_author);
+MODULE_LICENSE(module_license);
