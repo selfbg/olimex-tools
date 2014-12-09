@@ -1,37 +1,101 @@
 #!/bin/bash
 
-fdisk_first() {
-                p1_start=`fdisk -l /dev/mmcblk0 | grep mmcblk0p1 | awk '{print $2}'`
-                echo "Found the start point of mmcblk0p1: $p2_start"
-                fdisk /dev/mmcblk0 << __EOF__ >> /dev/null
+# Script that resize partition to fill the sd card.
+#
+# Parameters:
+# <device> - for example /dev/mmcblk0
+# <partition_number> - the number of the partition to resize, for example "1"
+#
+# Important!
+# The partition number should be the last. So if you have 2 partitions
+# and you want to resize the first one, you can't!
+
+
+if [ -z $1 ] || [ -z $2 ];
+then
+	echo "Error: not enough arguments!"
+	echo "Usage: ./resize_sd <device> <partition>"
+	exit
+fi
+
+# Check if the device is block
+if [ ! -b $1 ];
+then
+	echo "Device $1 does not exist!"
+	exit
+fi
+
+# Find partition name
+local partition_name=$1p$2
+echo "Partition name: $partition_name"
+
+if [ ! -b $partition_name ];
+then
+	echo "Partition $partition_name does not exist!"
+	exit
+fi
+
+# Check if init script exist
+if [ -e /etc/init.d/resize_sd ];
+then
+	echo "Script /etc/init.d/resize_sd exists. Reboot the board or remove the script."
+	exit
+fi
+
+# Find the start point
+local partition_start=`fdisk -l $1 | grep $partition_name | awk '{print $2}'`
+if [ -z $partition_start ];
+then
+	echo "Failed to find the start of partition $partition_name !"
+	exit
+else
+	echo "Found the start point of $partition_name: $partition_start"
+fi
+
+# Format the sd card
+fdisk $1 << __EOF__ >> /dev/null
 d
-1
+$2
 n
 p
-1
-$p1_start
+$2
+$partition_start
 
 p
 w
 __EOF__
 
-                sync
-                touch /root/.resize
-                echo "Ok, Partition resized, please reboot now"
-                echo "Once the reboot is completed please run this script again"
-}
+# Now add start script for the actual resize
+cat << __EOF__ > /etc/init.d/resize_sd &&
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:	resize_sd
+# Required-Start:
+# Required-Stop:
+# Default-Start: 2 3 4 5 S
+# Default-Stop:
+# Short-Description: Resize filesystem to fill sdcard
+# Description:
+### END INIT INFO
 
-resize_fs() {
-        echo "Activating the new size"
-        resize2fs /dev/mmcblk0p1 >> /dev/null
-        echo "Done!"                                                                                                                                                                            
-        echo "Enjoy your new space!"                                                                                                                                                            
-        rm -rf /root/.resize                                                                                                                                                                    
-}
+. /lib/lsb/init-functions
 
+case "\$1" in
+	start)
+	log_daemon_msg "Starting resize sdcard" &&
+	resize2fs $partition_name &&
+	rm /etc/init.d/resize_sd &&
+	update-rc.d resize_sd remove
+	log_end_msg $?
+	;;
+		
+	*)
+	echo "Usage: \$0 start" >&2
+	exit 3
+	;;
+esac
+__EOF__
 
-if [ -f /root/.resize ]; then
-        resize_fs
-else
-        fdisk_first
-fi
+chmod +x /etc/init.d/resize_sd &&
+update-rc.d resize_sd defaults &&
+echo "Root filesystem will be resized upon the next reboot"
