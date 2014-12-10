@@ -19,14 +19,15 @@
 
 struct softpwm_platform_data {
 	unsigned gpio_handler;
-	unsigned loaded;
+	int id;
 
 	script_gpio_set_t info;
 
 	char pin_name[16];
-	char pwm_name[64];
+	char device_name[64];
 
-	unsigned char duty;
+	unsigned duty;
+	unsigned last_state;
 
 	ktime_t period;
 	ktime_t pulse_on;
@@ -40,31 +41,49 @@ struct softpwm_platform_data {
 static DEFINE_MUTEX(sysfs_lock);
 
 static struct softpwm_platform_data *p_backlight;
+static struct softpwm_platform_data *p_dcr;
 
 
-
-/* Get gpio pin value */
-static int sunxi_gpio_get_value(struct softpwm_platform_data *gpio)
+static int sunxi_gpio_is_valid(struct softpwm_platform_data *gpio)
 {
-	int  ret;
-	user_gpio_set_t gpio_info[1];
+	if(gpio->gpio_handler)
+		return 1;
 
-	ret = gpio_get_one_pin_status(gpio->gpio_handler,
-				gpio_info, gpio->pin_name, 1);
+	return 0;
+}
 
-	return gpio_info->data;
+static int sunxi_direction_input(struct softpwm_platform_data *gpio)
+{
+	int ret;
+
+	if(sunxi_gpio_is_valid(gpio)){
+		ret = gpio_set_one_pin_io_status(gpio->gpio_handler, 0, gpio->pin_name);
+	}else{
+		printk(KERN_ERR "%s: requested gpio has no valid handler\n", __func__);
+		return 1;
+	}
+	return ret;
 }
 
 /* Set pin value (output mode) */
 static void sunxi_gpio_set_value(struct softpwm_platform_data *gpio, int value)
 {
-	gpio_write_one_pin_value(gpio->gpio_handler,
-					value, gpio->pin_name);
+
+	if(sunxi_gpio_is_valid(gpio)){
+		gpio_write_one_pin_value(gpio->gpio_handler, value, gpio->pin_name);
+	}else{
+		printk(KERN_ERR "%s: requested gpio has no valid handler\n", __func__);
+	}
 }
 
 static int sunxi_direction_output(struct softpwm_platform_data *gpio, int value)
 {
 	int ret;
+
+	if(!sunxi_gpio_is_valid(gpio)){
+		printk(KERN_ERR "%s: requested gpio has no valid handler\n", __func__);
+		return 1;
+	}
 
 	ret =  gpio_set_one_pin_io_status(gpio->gpio_handler, 1, gpio->pin_name);
 
@@ -122,17 +141,30 @@ static DEVICE_ATTR(duty, 0666, duty_show, duty_store);
 enum hrtimer_restart softpwm_hrtimer_callback(struct hrtimer *timer)
 {
 	unsigned char current_state;
-
-
+	struct softpwm_platform_data *dev;
 	ktime_t now = ktime_get();
-	current_state = sunxi_gpio_get_value(p_backlight);
 
-	if(!current_state){
-		sunxi_gpio_set_value(p_backlight, 1);
-		hrtimer_forward(timer, now, p_backlight->pulse_on);
-	}else{
-		sunxi_gpio_set_value(p_backlight, 0);
-		hrtimer_forward(timer, now, p_backlight->pulse_off);
+	dev = container_of(timer, struct softpwm_platform_data, hr_timer);
+
+	if(dev->id == 0){
+		if(!dev->duty){
+			sunxi_gpio_set_value(dev, 0);
+			hrtimer_forward(timer, now, p_backlight->pulse_off);
+		}else if(dev->duty == 100){
+			sunxi_gpio_set_value(dev, 1);
+			hrtimer_forward(timer, now, p_backlight->pulse_on);
+		}else{
+			current_state = dev->last_state;
+			if(current_state){
+				sunxi_gpio_set_value(dev, 0);
+				dev->last_state = 0;
+				hrtimer_forward(timer, now, p_backlight->pulse_off);
+			}else{
+				sunxi_gpio_set_value(dev, 1);
+				dev->last_state = 1;
+				hrtimer_forward(timer, now, p_backlight->pulse_on);
+			}
+		}
 	}
 
 	return HRTIMER_RESTART;
@@ -161,8 +193,6 @@ static ssize_t __init softpwm_init(void)
 {
 	int err;
 	int softpwm_used = 0;
-	char key[20];
-	struct timespec tp;
 
 	printk(KERN_INFO "%s()\n", __func__);
 
@@ -176,8 +206,9 @@ static ssize_t __init softpwm_init(void)
 
 	/* Allocate memory */
 	p_backlight = kzalloc(sizeof(struct softpwm_platform_data), GFP_KERNEL);
+	p_dcr = kzalloc(sizeof(struct softpwm_platform_data), GFP_KERNEL);
 
-	if (!p_backlight) {
+	if (!p_backlight || !p_dcr) {
 		printk(KERN_INFO "%s: failed to kzalloc memory\n", __func__);
 		err = -ENOMEM;
 		goto exit0;
@@ -186,30 +217,43 @@ static ssize_t __init softpwm_init(void)
 
 	/* Set pwm pin_name */
 	sprintf(p_backlight->pin_name, "pwm_pin");
+	sprintf(p_dcr->pin_name, "dcr_pin");
 
-
-	/* Read desired name from fex file */
-	sprintf(p_backlight->pwm_name, "backlight_pwm");
+	sprintf(p_backlight->device_name, "backlight");
+	sprintf(p_dcr->device_name, "dcr");
 
 	/* Read GPIO data */
 	err = script_parser_fetch("softpwm_para", p_backlight->pin_name,
-				(int *)&p_backlight->info,
-				sizeof(script_gpio_set_t));
+			(int *)&p_backlight->info,
+			sizeof(script_gpio_set_t));
 
 	if (err) {
-		printk(KERN_INFO "%s failed to find %s\n", __func__, key);
+		printk(KERN_INFO "%s failed to find %s\n", __func__, p_backlight->pin_name);
+		goto exit0;
+	}
+	err = script_parser_fetch("softpwm_para", p_dcr->pin_name,
+			(int *)&p_dcr->info,
+			sizeof(script_gpio_set_t));
+	if (err) {
+		printk(KERN_INFO "%s failed to find %s\n", __func__, p_dcr->pin_name);
 		goto exit0;
 	}
 
-	/* reserve gpio for led */
+
+	/* Request gpio */
 	p_backlight->gpio_handler = gpio_request_ex("softpwm_para", p_backlight->pin_name);
 	if (!p_backlight->gpio_handler) {
-		printk(KERN_INFO "%s: cannot request %s, already used ?\n", __func__, key);
+		printk(KERN_INFO "%s: cannot request %s, already used ?\n", __func__, p_backlight->pin_name);
+		goto exit0;
+	}
+	p_dcr->gpio_handler = gpio_request_ex("softpwm_para", p_dcr->pin_name);
+	if (!p_dcr->gpio_handler) {
+		printk(KERN_INFO "%s: cannot request %s, already used ?\n", __func__, p_dcr->pin_name);
 		goto exit0;
 	}
 
-	printk(KERN_INFO "%s: softpwm registered @ port:%d, num:%d\n", __func__, p_backlight->info.port, p_backlight->info.port_num);
-
+	printk(KERN_INFO "%s: backlight registered @ port:%d, num:%d\n", __func__, p_backlight->info.port, p_backlight->info.port_num);
+	printk(KERN_INFO "%s: dcr registered @ port:%d, num:%d\n", __func__, p_dcr->info.port, p_dcr->info.port_num);
 
 
 	err = class_register(&softpwm_class);
@@ -219,12 +263,17 @@ static ssize_t __init softpwm_init(void)
 	}
 
 
-
-
-	p_backlight->dev = device_create(&softpwm_class, &platform_bus, MKDEV(0, 0), p_backlight, "softpwm0");
+	/* Make sysfs devices */
+	p_backlight->dev = device_create(&softpwm_class, &platform_bus, MKDEV(0, 0), p_backlight, p_backlight->device_name);
 	if(IS_ERR(p_backlight->dev)) {
 		printk(KERN_INFO "%s: device_create failed\n", __func__);
 		err = PTR_ERR(p_backlight->dev);
+		goto exit1;
+	}
+	p_dcr->dev = device_create(&softpwm_class, &platform_bus, MKDEV(0, 0), p_dcr, p_dcr->device_name);
+	if(IS_ERR(p_backlight->dev)) {
+		printk(KERN_INFO "%s: device_create failed\n", __func__);
+		err = PTR_ERR(p_dcr->dev);
 		goto exit1;
 	}
 
@@ -233,37 +282,49 @@ static ssize_t __init softpwm_init(void)
 		printk(KERN_INFO "%s: failed to create sysfs device attributes\n", __func__);
 		goto exit2;
 	}
+	err = sysfs_create_group(&p_dcr->dev->kobj, &softpwm_attribute_group);
+	if(err < 0){
+		printk(KERN_INFO "%s: failed to create sysfs device attributes\n", __func__);
+		goto exit2;
+	}
 
-
-
-
-
-	hrtimer_get_res(CLOCK_MONOTONIC, &tp);
+	p_backlight->id = 0;
+	p_dcr->id = 1;
 
 	/* Set period to 1kHz, 50% duty */
 	p_backlight->period = ktime_set(0, 1000000);
 	p_backlight->pulse_on = ktime_set(0, 500000);
 	p_backlight->pulse_off = ktime_set(0, 500000);
 
+
 	/* Init gpio as output */
 	sunxi_direction_output(p_backlight, 0);
+	p_backlight->last_state = 0;
+	sunxi_direction_output(p_dcr, 0);
+	p_dcr->last_state = 0;
 
 
 	hrtimer_init(&p_backlight->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&p_dcr->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+
 	p_backlight->hr_timer.function = &softpwm_hrtimer_callback;
+	p_dcr->hr_timer.function = &softpwm_hrtimer_callback;
+
 	hrtimer_start(&p_backlight->hr_timer, p_backlight->pulse_off, HRTIMER_MODE_REL);
 
 
 	return 0;
 
 exit2:
-	if(p_backlight->loaded)
-		sysfs_remove_group(&p_backlight->dev->kobj, &softpwm_attribute_group);
+	sysfs_remove_group(&p_backlight->dev->kobj, &softpwm_attribute_group);
+	sysfs_remove_group(&p_dcr->dev->kobj, &softpwm_attribute_group);
 
 exit1:
 	/* Unregister devices */
 	if(p_backlight->dev)
 		device_unregister(p_backlight->dev);
+	if(p_dcr->dev)
+		device_unregister(p_dcr->dev);
 
 	/* Unregister class */
 	class_unregister(&softpwm_class);
@@ -272,11 +333,15 @@ exit1:
 exit0:
 	if (err != -ENOMEM) {
 
-		if (p_backlight->gpio_handler){
+		if(p_backlight->gpio_handler){
 			gpio_release(p_backlight->gpio_handler, 1);
 		}
-	}
 
+		if(p_dcr->gpio_handler){
+			gpio_release(p_dcr->gpio_handler, 1);
+		}
+	}
+	kfree(p_dcr);
 	kfree(p_backlight);
 	return err;
 }
@@ -289,19 +354,29 @@ static void __exit softpwm_exit(void)
 	printk(KERN_INFO "%s()\n", __func__);
 
 	hrtimer_cancel(&p_backlight->hr_timer);
+	hrtimer_cancel(&p_dcr->hr_timer);
+
+	/* Make gpios as inputs */
+	sunxi_direction_input(p_backlight);
+	sunxi_direction_input(p_dcr);
 
 	/* Release gpios */
 	if(p_backlight->gpio_handler){
 		gpio_release(p_backlight->gpio_handler, 1);
 		printk(KERN_INFO "%s: gpio %s released\n", __func__, p_backlight->info.gpio_name);
 	}
-
-	if(p_backlight->loaded){
-		sysfs_remove_group(&p_backlight->dev->kobj, &softpwm_attribute_group);
+	if(p_dcr->gpio_handler){
+		gpio_release(p_dcr->gpio_handler, 1);
+		printk(KERN_INFO "%s: gpio %s released\n", __func__, p_dcr->info.gpio_name);
 	}
+
+	sysfs_remove_group(&p_backlight->dev->kobj, &softpwm_attribute_group);
+	sysfs_remove_group(&p_dcr->dev->kobj, &softpwm_attribute_group);
 
 	if(p_backlight->dev)
 		device_unregister(p_backlight->dev);
+	if(p_dcr->dev)
+		device_unregister(p_dcr->dev);
 
 	class_unregister(&softpwm_class);
 
