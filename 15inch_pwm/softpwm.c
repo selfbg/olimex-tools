@@ -19,7 +19,6 @@
 
 struct softpwm_platform_data {
 	unsigned gpio_handler;
-	int id;
 
 	script_gpio_set_t info;
 
@@ -295,21 +294,18 @@ static ssize_t __init softpwm_init(void)
 		goto exit2;
 	}
 
-	p_backlight->id = 0;
-	p_dcr->id = 1;
-
-	p_backlight->duty = 50;
-	p_dcr->duty = 50;
+	p_backlight->duty = 100;
+	p_dcr->duty = 100;
 
 	/* Set period to 1kHz, 50% duty */
 	p_backlight->period = ktime_set(0, 1000000);
 	p_dcr->period = ktime_set(0, 1000000);
 
-	p_backlight->pulse_on = ktime_set(0, 500000);
-	p_dcr->pulse_on = ktime_set(0, 500000);
+	p_backlight->pulse_on = ktime_set(0, 1000000);
+	p_dcr->pulse_on = ktime_set(0, 1000000);
 
-	p_backlight->pulse_off = ktime_set(0, 500000);
-	p_dcr->pulse_off = ktime_set(0, 500000);
+	p_backlight->pulse_off = ktime_set(0, 0);
+	p_dcr->pulse_off = ktime_set(0, 0);
 
 	/* Init gpio as output */
 	sunxi_direction_output(p_backlight, 0);
@@ -395,9 +391,6 @@ static void __exit softpwm_exit(void)
 		device_unregister(p_dcr->dev);
 
 	class_unregister(&softpwm_class);
-
-
-
 
 }
 
