@@ -98,9 +98,15 @@ static int sunxi_direction_output(struct softpwm_platform_data *gpio, int value)
 
 static ssize_t duty_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	struct softpwm_platform_data *device;
 	ssize_t ret;
+
+	device = dev_get_drvdata(dev);
+
 	mutex_lock(&sysfs_lock);
-	ret = sprintf(buf, "%d\n", p_backlight->duty);
+
+	ret = sprintf(buf, "%d\n", device->duty);
+
 	mutex_unlock(&sysfs_lock);
 	return ret;
 }
@@ -110,6 +116,9 @@ static ssize_t duty_store(struct device *dev, struct device_attribute *attr, con
 	ssize_t ret;
 	long duty;
 	u64 v;
+	struct softpwm_platform_data *device;
+
+	device = dev_get_drvdata(dev);
 
 	mutex_lock(&sysfs_lock);
 
@@ -120,12 +129,12 @@ static ssize_t duty_store(struct device *dev, struct device_attribute *attr, con
 	if(duty < 0 || duty > 100)
 		return -EINVAL;
 
-	p_backlight->duty = duty;
-	v = p_backlight->period.tv64;
+	device->duty = duty;
+	v = device->period.tv64;
 	do_div(v, 100);
 
-	p_backlight->pulse_on.tv64 = v*duty;
-	p_backlight->pulse_off.tv64 = v*(100-duty);
+	device->pulse_on.tv64 = v*duty;
+	device->pulse_off.tv64 = v*(100-duty);
 
 	mutex_unlock(&sysfs_lock);
 
@@ -146,24 +155,22 @@ enum hrtimer_restart softpwm_hrtimer_callback(struct hrtimer *timer)
 
 	dev = container_of(timer, struct softpwm_platform_data, hr_timer);
 
-	if(dev->id == 0){
-		if(!dev->duty){
+	if(!dev->duty){
+		sunxi_gpio_set_value(dev, 0);
+		hrtimer_forward(timer, now, p_backlight->pulse_off);
+	}else if(dev->duty == 100){
+		sunxi_gpio_set_value(dev, 1);
+		hrtimer_forward(timer, now, p_backlight->pulse_on);
+	}else{
+		current_state = dev->last_state;
+		if(current_state){
 			sunxi_gpio_set_value(dev, 0);
+			dev->last_state = 0;
 			hrtimer_forward(timer, now, p_backlight->pulse_off);
-		}else if(dev->duty == 100){
-			sunxi_gpio_set_value(dev, 1);
-			hrtimer_forward(timer, now, p_backlight->pulse_on);
 		}else{
-			current_state = dev->last_state;
-			if(current_state){
-				sunxi_gpio_set_value(dev, 0);
-				dev->last_state = 0;
-				hrtimer_forward(timer, now, p_backlight->pulse_off);
-			}else{
-				sunxi_gpio_set_value(dev, 1);
-				dev->last_state = 1;
-				hrtimer_forward(timer, now, p_backlight->pulse_on);
-			}
+			sunxi_gpio_set_value(dev, 1);
+			dev->last_state = 1;
+			hrtimer_forward(timer, now, p_backlight->pulse_on);
 		}
 	}
 
@@ -291,15 +298,23 @@ static ssize_t __init softpwm_init(void)
 	p_backlight->id = 0;
 	p_dcr->id = 1;
 
+	p_backlight->duty = 50;
+	p_dcr->duty = 50;
+
 	/* Set period to 1kHz, 50% duty */
 	p_backlight->period = ktime_set(0, 1000000);
-	p_backlight->pulse_on = ktime_set(0, 500000);
-	p_backlight->pulse_off = ktime_set(0, 500000);
+	p_dcr->period = ktime_set(0, 1000000);
 
+	p_backlight->pulse_on = ktime_set(0, 500000);
+	p_dcr->pulse_on = ktime_set(0, 500000);
+
+	p_backlight->pulse_off = ktime_set(0, 500000);
+	p_dcr->pulse_off = ktime_set(0, 500000);
 
 	/* Init gpio as output */
 	sunxi_direction_output(p_backlight, 0);
 	p_backlight->last_state = 0;
+
 	sunxi_direction_output(p_dcr, 0);
 	p_dcr->last_state = 0;
 
@@ -311,6 +326,7 @@ static ssize_t __init softpwm_init(void)
 	p_dcr->hr_timer.function = &softpwm_hrtimer_callback;
 
 	hrtimer_start(&p_backlight->hr_timer, p_backlight->pulse_off, HRTIMER_MODE_REL);
+	hrtimer_start(&p_dcr->hr_timer, p_dcr->pulse_off, HRTIMER_MODE_REL);
 
 
 	return 0;
