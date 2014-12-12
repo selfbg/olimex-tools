@@ -163,16 +163,13 @@ function delete_parameter
 	local line=$(find_word $1)
 	
 	# Check if parameter is null
-	if [ -z $line ];
+	if [ ! -z $line ];
 	then
-		dialog --infobox "Cannot find $1 variable!" 0 0
-		sleep 2
-		cleanup
-		exit
+		# Delete parameter
+		sed -i $line'd' $FEX_FILE
 	fi
 	
-	# Delete parameter
-	sed -i $line'd' $FEX_FILE
+	
 }
 
 
@@ -207,7 +204,11 @@ function insert_after
 		cleanup
 		exit
 	else
-		sed -i $line'a\'$2' = '$3'' $FEX_FILE
+		local next_line=$(sed -n $(($line+1))'p' $FEX_FILE)
+		if [[ $next_line != *"$2"* ]];
+		then
+			sed -i $line'a\'$2' = '$3'' $FEX_FILE
+		fi
 	fi
 }
 
