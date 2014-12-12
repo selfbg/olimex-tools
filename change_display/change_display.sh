@@ -93,12 +93,12 @@ function insert_rc_local
 	fi
 	
 	# Insert line
-	sed -i $line'i$1' $RCLOCAL
+	sed -i $line'i'"$1" $RCLOCAL
 }
 
 function delete_rc_local
 {
-	local line=$(find_word $1)
+	local line=$(find_last_word $RCLOCAL $1)	
 	if [ ! -z $line ];
 	then
 		sed -i $line'd' $RCLOCAL
@@ -703,7 +703,7 @@ set_screen_lcd() {
 			insert_rc_local "$DEVMEM 0x01c20118 w 0xc2000000"
 			insert_rc_local "insmod $SOFTPWM"
 		else
-			delete_rc_local "devmem"
+			delete_rc_local "0x01c20118"
 			delete_rc_local "softpwm"
 		fi
 	fi
