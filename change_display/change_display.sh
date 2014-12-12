@@ -93,7 +93,7 @@ function insert_rc_local
 	fi
 	
 	# Insert line
-	sed -i $line's/.*/'$2'/' $RCLOCAL
+	sed -i $line'i$1' $RCLOCAL
 }
 
 function delete_rc_local
