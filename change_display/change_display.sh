@@ -39,7 +39,7 @@ DEVMEM=${DEVMEM:="/opt/mem/devmem"}
 # Define script files
 BIN_FILE=${BIN_FILE:="$MMC_DIR/script.bin"}
 FEX_FILE=${FEX_FILE:="$TEMP_DIR/script.fex"}
-RCLOCAL=${RCLOCAL:="etc/rc.local"}
+RCLOCAL=${RCLOCAL:="/etc/rc.local"}
 SOFTPWM=${SOFTPWM:="/opt/softpwm.ko"}
 
 
