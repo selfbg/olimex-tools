@@ -104,6 +104,30 @@ function delete_rc_local
 	fi
 }
 
+function change_parameter_in_section
+{
+	# Find section line
+	local section=$(find_word $1)
+	if [ -z $section ];
+	then
+		dialog --infobox "Cannot find $1 variable!" 0 0
+		sleep 2
+		cleanup
+		exit
+	fi
+
+	grep -nr "$2" $FEX_FILE | tail -1 | awk '{print$1}' FS=":" | awk '{print$1}' FS=":" | while read -r line;
+	do
+		local var=$line;
+        if [ "$var" -gt "$section" ];
+        then
+        	# Replace parameter
+			sed -i $var's/.*/'$2' = '$3'/' $FEX_FILE
+            break
+        fi
+    done
+	
+}
 # Find parameter and set its value
 # Parameters:
 #	$1	<parameter> to search for
@@ -474,7 +498,7 @@ set_screen_lcd() {
 	    lcd_lvds_bitwidth=0
 	    lcd_lvds_ch=0
 	    lcd_frm=1
-	    lcd_io_cfg0=0
+	    lcd_io_cfg0=268435456
 	    lcd_bl_en_used=1
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
@@ -492,12 +516,12 @@ set_screen_lcd() {
 	    vt=1050
 	    vspw=1
 	    hspw=30
-	    lcd_backlight=0
+	    lcd_backlight=250
 	    lcd_if=0
 	    lcd_lvds_bitwidth=0
 	    lcd_lvds_ch=0
 	    lcd_frm=1
-	    lcd_io_cfg0=0
+	    lcd_io_cfg0=268435456
 	    lcd_bl_en_used=1
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
@@ -518,7 +542,7 @@ set_screen_lcd() {
 	    lcd_lvds_bitwidth=0
 	    lcd_lvds_ch=0
 	    lcd_frm=1
-	    lcd_io_cfg0=0
+	    lcd_io_cfg0=268435456
 	    lcd_bl_en_used=1
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
@@ -540,7 +564,7 @@ set_screen_lcd() {
 	    lcd_lvds_bitwidth=1
 	    lcd_lvds_ch=0
 	    lcd_frm=1
-	    lcd_io_cfg0="0x04000000"
+	    lcd_io_cfg0=268435456
 	    lcd_bl_en_used=0
 	    fb0_scaler_mode_enable=1
 	    fb0_width=1366
@@ -562,7 +586,7 @@ set_screen_lcd() {
 	    lcd_lvds_bitwidth=1
 	    lcd_lvds_ch=1
 	    lcd_frm=1
-	    lcd_io_cfg0="67108864"
+	    lcd_io_cfg0=268435456
 	    lcd_bl_en_used=0
 	    fb0_scaler_mode_enable=1
 	    fb0_width=1920
@@ -595,7 +619,7 @@ set_screen_lcd() {
 	   	change_parameter $PARAM_LCD_LVDS_CH $lcd_lvds_ch
 	   	change_parameter $PARAM_LCD_FRM $lcd_frm
 	   	change_parameter $PARAM_LCD0_BACKLIGHT $lcd_backlight
-	   	change_parameter $PARAM_PWM_USED $pwm_used
+	   	change_parameter_in_section "pwm0_para" $PARAM_PWM_USED $pwm_used
 	   	
 	   	if [ "$choice" = "15.6" ] || [ "$choice" = "15.6-FHD" ];
 		then
@@ -631,8 +655,8 @@ set_screen_lcd() {
 			change_parameter "lcdd20" "port:PD20<3><0><default><default>"
 			change_parameter "lcdd21" "port:PD21<3><0><default><default>"
 			# Delete useless parameters
-			delete_parameter "lcd22"
-			delete_parameter "lcd23"
+			delete_parameter "lcdd22"
+			delete_parameter "lcdd23"
 			delete_parameter "lcdclk"
 			delete_parameter "lcdde"
 			delete_parameter "lcdhsync"
