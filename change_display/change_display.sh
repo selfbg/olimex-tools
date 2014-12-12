@@ -12,8 +12,8 @@ PARAM_LCD_HBP="lcd_hbp"
 PARAM_LCD_HT="lcd_ht"
 PARAM_LCD_VBP="lcd_vbp"
 PARAM_LCD_VT="lcd_vt"
-PARAM_LCD_VSPW="lcd_hv_vspw"
-PARAM_LCD_HSPW="lcd_hv_hspw"
+PARAM_LCD_VSPW="lcd_vspw"
+PARAM_LCD_HSPW="lcd_hspw"
 PARAM_LCD_IF="lcd_if"
 PARAM_LCD_LVDS_BITWIDTH="lcd_lvds_bitwidth"
 PARAM_LCD_IO_CFG0="lcd_io_cfg0"
@@ -24,6 +24,7 @@ PARAM_FBO_HEIGHT="fb0_height"
 PARAM_LCD_LVDS_CH="lcd_lvds_ch"
 PARAM_LCD_FRM="lcd_frm"
 PARAM_LCD0_BACKLIGHT="lcd0_backlight"
+PARAM_PWM_USED="pwm_used"
 
 # Define directories
 TEMP_DIR=${TEMP_DIR:="/tmp/screen"}
@@ -33,10 +34,13 @@ SUNXI_DIR=${SUNXI_DIR:="/opt/sunxi-tools"}
 # Define tools
 BIN2FEX=${BIN2FEX:="$SUNXI_DIR/bin2fex"}
 FEX2BIN=${FEX2BIN:="$SUNXI_DIR/fex2bin"}
+DEVMEM=${DEVMEM:="/opt/mem/devmem"}
 
 # Define script files
 BIN_FILE=${BIN_FILE:="$MMC_DIR/script.bin"}
 FEX_FILE=${FEX_FILE:="$TEMP_DIR/script.fex"}
+RCLOCAL=${RCLOCAL:="etc/rc.local"}
+SOFTPWM=${SOFTPWM:="/opt/softpwm.ko"}
 
 
 tempfile1=/tmp/dialog_1_$$
@@ -61,13 +65,51 @@ function find_word
 	echo $(grep -nr -m 1 "$1" $FEX_FILE | awk '{print$1}' FS=":")
 }
 
+# Find last match in file
+#
+# Parameters:
+# $1 <Word> to be searched
+#
+# Return:
+# <line> -> If word is found
+# <null> -> There is no such word
+#
+function find_last_word
+{
+	echo $(grep -nr "$1" $FEX_FILE | tail -1 | awk '{print$1}' FS=":")
+} 
+
+# Insert into rc.local
+function insert_rc_local
+{
+	local line=$(find_last_word "exit")
+	if [ -z $line ];
+	then
+		dialog --infobox "Cannot find 'exit 0' in $RCLOCAL"
+		sleep 2
+		cleanup
+		exit
+	fi
+	
+	# Insert line
+	sed -i $line's/.*/'$2'/' $RCLOCAL
+}
+
+function delete_rc_local
+{
+	local line=$(find_word $1)
+	if [ ! -z $line ];
+	then
+		sed -i $line'd' $RCLOCAL
+	fi
+}
+
 # Find parameter and set its value
 # Parameters:
 #	$1	<parameter> to search for
 #	$2	new value
 #
 # Note: if a parameter is present in multiple places only the first is replaced.
-
 function change_parameter
 {
 	# Find line number
@@ -84,6 +126,29 @@ function change_parameter
 	
 	# Replace parameter
 	sed -i $line's/.*/'$1' = '$2'/' $FEX_FILE
+}
+
+
+# Find parameter and delete it
+# Parameters:
+# $1 <parameter> to search for
+# Note: only the first found parameter is deleted.
+function delete_parameter
+{
+	# Find line number
+	local line=$(find_word $1)
+	
+	# Check if parameter is null
+	if [ -z $line ];
+	then
+		dialog --infobox "Cannot find $1 variable!" 0 0
+		sleep 2
+		cleanup
+		exit
+	fi
+	
+	# Delete parameter
+	sed -i $line'd' $FEX_FILE
 }
 
 
@@ -414,7 +479,8 @@ set_screen_lcd() {
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
 	    fb0_height=0
-	    lcd_backlight=240
+	    lcd_backlight=250
+	    pwm_used=1
     ;;
     "7.0")
 	    x=800
@@ -435,7 +501,8 @@ set_screen_lcd() {
 	    lcd_bl_en_used=1
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
-	    fb0_height=240
+	    fb0_height=250
+	    pwm_used=1
     ;;
     "10.3")
 	    x=1024
@@ -456,7 +523,8 @@ set_screen_lcd() {
 	    fb0_scaler_mode_enable=0
 	    fb0_width=0
 	    fb0_height=0
-	    lcd_backlight=240
+	    lcd_backlight=250
+	    pwm_used=1
     ;;
 	"15.6")
 	    x=1366
@@ -478,11 +546,12 @@ set_screen_lcd() {
 	    fb0_width=1366
 	    fb0_height=768
 	    lcd_backlight=0
+	    pwm_used=0
     ;;
     "15.6-FHD")
 	    x=1920
 	    y=1080
-	    freq=76
+	    freq=152
 	    hbp=100
 	    ht=2226
 	    vbp=23
@@ -499,6 +568,7 @@ set_screen_lcd() {
 	    fb0_width=1920
 	    fb0_height=1080
 	    lcd_backlight=0
+	    pwm_used=0
     ;;
     esac
     
@@ -525,6 +595,7 @@ set_screen_lcd() {
 	   	change_parameter $PARAM_LCD_LVDS_CH $lcd_lvds_ch
 	   	change_parameter $PARAM_LCD_FRM $lcd_frm
 	   	change_parameter $PARAM_LCD0_BACKLIGHT $lcd_backlight
+	   	change_parameter $PARAM_PWM_USED $pwm_used
 	   	
 	   	if [ "$choice" = "15.6" ] || [ "$choice" = "15.6-FHD" ];
 		then
@@ -534,7 +605,80 @@ set_screen_lcd() {
 				insert_after "\[clock]" "pll3" "297"
 			else
 				change_parameter "pll3" "297"
-			fi	
+			fi
+			
+			# Change lcd pins to lvds
+			change_parameter "lcdd0" "port:PD00<3><0><default><default>"
+			change_parameter "lcdd1" "port:PD01<3><0><default><default>"
+			change_parameter "lcdd2" "port:PD02<3><0><default><default>"
+			change_parameter "lcdd3" "port:PD03<3><0><default><default>"
+			change_parameter "lcdd4" "port:PD04<3><0><default><default>"
+			change_parameter "lcdd5" "port:PD05<3><0><default><default>"
+			change_parameter "lcdd6" "port:PD06<3><0><default><default>"
+			change_parameter "lcdd7" "port:PD07<3><0><default><default>"
+			change_parameter "lcdd8" "port:PD08<3><0><default><default>"
+			change_parameter "lcdd9" "port:PD09<3><0><default><default>"
+			change_parameter "lcdd10" "port:PD10<3><0><default><default>"
+			change_parameter "lcdd11" "port:PD11<3><0><default><default>"
+			change_parameter "lcdd12" "port:PD12<3><0><default><default>"
+			change_parameter "lcdd13" "port:PD13<3><0><default><default>"
+			change_parameter "lcdd14" "port:PD14<3><0><default><default>"
+			change_parameter "lcdd15" "port:PD15<3><0><default><default>"
+			change_parameter "lcdd16" "port:PD16<3><0><default><default>"
+			change_parameter "lcdd17" "port:PD17<3><0><default><default>"
+			change_parameter "lcdd18" "port:PD18<3><0><default><default>"
+			change_parameter "lcdd19" "port:PD19<3><0><default><default>"
+			change_parameter "lcdd20" "port:PD20<3><0><default><default>"
+			change_parameter "lcdd21" "port:PD21<3><0><default><default>"
+			# Delete useless parameters
+			delete_parameter "lcd22"
+			delete_parameter "lcd23"
+			delete_parameter "lcdclk"
+			delete_parameter "lcdde"
+			delete_parameter "lcdhsync"
+			delete_parameter "lcdvsync"	
+			
+		else
+			# Change pins to parallel port
+			change_parameter "lcdd0" "port:PD002><0><default><default>"
+			change_parameter "lcdd1" "port:PD012><0><default><default>"
+			change_parameter "lcdd2" "port:PD022><0><default><default>"
+			change_parameter "lcdd3" "port:PD032><0><default><default>"
+			change_parameter "lcdd4" "port:PD042><0><default><default>"
+			change_parameter "lcdd5" "port:PD052><0><default><default>"
+			change_parameter "lcdd6" "port:PD062><0><default><default>"
+			change_parameter "lcdd7" "port:PD072><0><default><default>"
+			change_parameter "lcdd8" "port:PD082><0><default><default>"
+			change_parameter "lcdd9" "port:PD092><0><default><default>"
+			change_parameter "lcdd10" "port:PD10<2><0><default><default>"
+			change_parameter "lcdd11" "port:PD11<2><0><default><default>"
+			change_parameter "lcdd12" "port:PD12<2><0><default><default>"
+			change_parameter "lcdd13" "port:PD13<2><0><default><default>"
+			change_parameter "lcdd14" "port:PD14<2><0><default><default>"
+			change_parameter "lcdd15" "port:PD15<2><0><default><default>"
+			change_parameter "lcdd16" "port:PD16<2><0><default><default>"
+			change_parameter "lcdd17" "port:PD17<2><0><default><default>"
+			change_parameter "lcdd18" "port:PD18<2><0><default><default>"
+			change_parameter "lcdd19" "port:PD19<2><0><default><default>"
+			change_parameter "lcdd20" "port:PD20<2><0><default><default>"
+			change_parameter "lcdd21" "port:PD21<2><0><default><default>"
+			# Add needed pins for paralle lcds
+			insert_after "lcdd21" "lcdvsync" "port:PD27<2><0><default><default>"
+			insert_after "lcdd21" "lcdhsync" "port:PD26<2><0><default><default>"
+			insert_after "lcdd21" "lcdde" "port:PD25<2><0><default><default>"
+			insert_after "lcdd21" "lcdclk" "port:PD24<2><0><default><default>"
+			insert_after "lcdd21" "lcdd23" "port:PD23<2><0><default><default>"
+			insert_after "lcdd21" "lcdd22" "port:PD22<2><0><default><default>"
+
+		fi
+		
+		if [ "$choice" = "15.6-FHD" ];
+		then
+			insert_rc_local "$DEVMEM 0x01c20118 w 0xc2000000"
+			insert_rc_local "insmod $SOFTPWM"
+		else
+			delete_rc_local "devmem"
+			delete_rc_local "softpwm"
 		fi
 	fi
 
@@ -561,6 +705,13 @@ function check_tools
 	if [ ! -d $TEMP_DIR ];
 	then
 		mkdir -p $TEMP_DIR
+	fi
+	
+	# Checking for devmem
+	if [ ! -f $DEVMEM ];
+	then
+		echo "There is no devmem installed."
+		exit
 	fi
 }
 
