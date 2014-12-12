@@ -85,7 +85,7 @@ function insert_rc_local
 	local line=$(find_last_word "exit")
 	if [ -z $line ];
 	then
-		dialog --infobox "Cannot find 'exit 0' in $RCLOCAL"
+		dialog --infobox "Cannot find 'exit 0' in $RCLOCAL" 0 0
 		sleep 2
 		cleanup
 		exit
