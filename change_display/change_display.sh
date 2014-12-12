@@ -68,7 +68,8 @@ function find_word
 # Find last match in file
 #
 # Parameters:
-# $1 <Word> to be searched
+# $1 <File> 
+# $2 <Word> to be searched
 #
 # Return:
 # <line> -> If word is found
@@ -76,13 +77,13 @@ function find_word
 #
 function find_last_word
 {
-	echo $(grep -nr "$1" $FEX_FILE | tail -1 | awk '{print$1}' FS=":")
+	echo $(grep -nr "$2" $1 | tail -1 | awk '{print$1}' FS=":")
 } 
 
 # Insert into rc.local
 function insert_rc_local
 {
-	local line=$(find_last_word "exit")
+	local line=$(find_last_word $RCLOCAL "exit")
 	if [ -z $line ];
 	then
 		dialog --infobox "Cannot find 'exit 0' in $RCLOCAL" 0 0
