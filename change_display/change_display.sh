@@ -42,7 +42,6 @@ FEX_FILE=${FEX_FILE:="$TEMP_DIR/script.fex"}
 RCLOCAL=${RCLOCAL:="/etc/rc.local"}
 SOFTPWM=${SOFTPWM:="/opt/softpwm.ko"}
 
-
 tempfile1=/tmp/dialog_1_$$
 tempfile2=/tmp/dialog_2_$$
 tempfile3=/tmp/dialog_3_$$
@@ -116,10 +115,10 @@ function change_parameter_in_section
 		cleanup
 		exit
 	fi
-
-	grep -nr "$2" $FEX_FILE | tail -1 | awk '{print$1}' FS=":" | awk '{print$1}' FS=":" | while read -r line;
+	
+	grep -nr "$2" $FEX_FILE | awk '{print$1}' FS=":" | while read -r line;
 	do
-		local var=$line;
+		local var=$line;	
         if [ "$var" -gt "$section" ];
         then
         	# Replace parameter
@@ -139,7 +138,7 @@ function change_parameter
 {
 	# Find line number
 	local line=$(find_word $1)
-	
+			
 	# Check if parameter is null
 	if [ -z $line ];
 	then
@@ -666,16 +665,16 @@ set_screen_lcd() {
 			
 		else
 			# Change pins to parallel port
-			change_parameter "lcdd0" "port:PD002><0><default><default>"
-			change_parameter "lcdd1" "port:PD012><0><default><default>"
-			change_parameter "lcdd2" "port:PD022><0><default><default>"
-			change_parameter "lcdd3" "port:PD032><0><default><default>"
-			change_parameter "lcdd4" "port:PD042><0><default><default>"
-			change_parameter "lcdd5" "port:PD052><0><default><default>"
-			change_parameter "lcdd6" "port:PD062><0><default><default>"
-			change_parameter "lcdd7" "port:PD072><0><default><default>"
-			change_parameter "lcdd8" "port:PD082><0><default><default>"
-			change_parameter "lcdd9" "port:PD092><0><default><default>"
+			change_parameter "lcdd0" "port:PD00<2><0><default><default>"
+			change_parameter "lcdd1" "port:PD01<2><0><default><default>"
+			change_parameter "lcdd2" "port:PD02<2><0><default><default>"
+			change_parameter "lcdd3" "port:PD03<2><0><default><default>"
+			change_parameter "lcdd4" "port:PD04<2><0><default><default>"
+			change_parameter "lcdd5" "port:PD05<2><0><default><default>"
+			change_parameter "lcdd6" "port:PD06<2><0><default><default>"
+			change_parameter "lcdd7" "port:PD07<2><0><default><default>"
+			change_parameter "lcdd8" "port:PD08<2><0><default><default>"
+			change_parameter "lcdd9" "port:PD09<2><0><default><default>"
 			change_parameter "lcdd10" "port:PD10<2><0><default><default>"
 			change_parameter "lcdd11" "port:PD11<2><0><default><default>"
 			change_parameter "lcdd12" "port:PD12<2><0><default><default>"
