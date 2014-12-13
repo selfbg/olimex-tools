@@ -226,6 +226,8 @@ set_screen_none() {
 	if [ $result -eq 0 ];
 	then
 		change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "0"
+		delete_rc_local "softpwm"
+    	delete_rc_local "0x01c20118"
 	fi
 }
 
@@ -265,6 +267,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
 		1)
@@ -273,6 +277,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
 		2)
@@ -281,6 +287,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
 		3)
@@ -289,6 +297,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
 		4)
@@ -297,6 +307,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
 		5)
@@ -305,6 +317,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 		6)
@@ -313,6 +327,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 		7)
@@ -321,6 +337,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 		8)
@@ -329,6 +347,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 		9)
@@ -337,6 +357,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 		10)
@@ -345,6 +367,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 		11)
@@ -353,6 +377,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 		14)
@@ -361,6 +387,8 @@ set_screen_hdmi() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "3"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 	esac
@@ -401,6 +429,8 @@ set_screen_vga() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
     	1)
@@ -409,6 +439,8 @@ set_screen_vga() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
     	2)
@@ -417,6 +449,8 @@ set_screen_vga() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
     	3)
@@ -425,6 +459,8 @@ set_screen_vga() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
     	4)
@@ -433,6 +469,8 @@ set_screen_vga() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
     	5)
@@ -441,6 +479,8 @@ set_screen_vga() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
     	6)
@@ -449,6 +489,8 @@ set_screen_vga() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
     	10)
@@ -457,6 +499,8 @@ set_screen_vga() {
 			then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;
     	11)
@@ -465,6 +509,8 @@ set_screen_vga() {
     		then
 			   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "4"
     			change_parameter "screen0_output_mode" $choice
+    			delete_rc_local "softpwm"
+    			delete_rc_local "0x01c20118"
 			fi
     	;;  
 	esac
