@@ -82,6 +82,13 @@ function find_last_word
 # Insert into rc.local
 function insert_rc_local
 {
+	# Check if the line is already inserted
+	local var=$(find_last_word $RCLOCAL "$1")
+	if [ ! -z $var ];
+	then
+		return
+	fi
+
 	local line=$(find_last_word $RCLOCAL "exit")
 	if [ -z $line ];
 	then
@@ -661,7 +668,8 @@ set_screen_lcd() {
 			delete_parameter "lcdclk"
 			delete_parameter "lcdde"
 			delete_parameter "lcdhsync"
-			delete_parameter "lcdvsync"	
+			delete_parameter "lcdvsync"
+			insert_rc_local "insmod $SOFTPWM"	
 			
 		else
 			# Change pins to parallel port
@@ -694,16 +702,17 @@ set_screen_lcd() {
 			insert_after "lcdd21" "lcdclk" "port:PD24<2><0><default><default>"
 			insert_after "lcdd21" "lcdd23" "port:PD23<2><0><default><default>"
 			insert_after "lcdd21" "lcdd22" "port:PD22<2><0><default><default>"
+			delete_rc_local "softpwm"
 
 		fi
 		
 		if [ "$choice" = "15.6-FHD" ];
 		then
 			insert_rc_local "$DEVMEM 0x01c20118 w 0xc2000000"
-			insert_rc_local "insmod $SOFTPWM"
+			
 		else
 			delete_rc_local "0x01c20118"
-			delete_rc_local "softpwm"
+			
 		fi
 	fi
 
