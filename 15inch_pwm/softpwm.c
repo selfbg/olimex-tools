@@ -19,6 +19,7 @@
 
 struct softpwm_platform_data {
 	unsigned gpio_handler;
+	unsigned inverted : 1;
 
 	script_gpio_set_t info;
 
@@ -155,21 +156,27 @@ enum hrtimer_restart softpwm_hrtimer_callback(struct hrtimer *timer)
 	dev = container_of(timer, struct softpwm_platform_data, hr_timer);
 
 	if(!dev->duty){
-		sunxi_gpio_set_value(dev, 0);
-		hrtimer_forward(timer, now, p_backlight->pulse_off);
+		sunxi_gpio_set_value(dev, dev->inverted);
+		hrtimer_forward(timer, now, dev->pulse_off);
 	}else if(dev->duty == 100){
-		sunxi_gpio_set_value(dev, 1);
-		hrtimer_forward(timer, now, p_backlight->pulse_on);
+		sunxi_gpio_set_value(dev, !dev->inverted);
+		hrtimer_forward(timer, now, dev->pulse_on);
 	}else{
 		current_state = dev->last_state;
 		if(current_state){
 			sunxi_gpio_set_value(dev, 0);
 			dev->last_state = 0;
-			hrtimer_forward(timer, now, p_backlight->pulse_off);
+			if(!dev->inverted)
+				hrtimer_forward(timer, now, dev->pulse_off);
+			else
+				hrtimer_forward(timer, now, dev->pulse_on);
 		}else{
 			sunxi_gpio_set_value(dev, 1);
 			dev->last_state = 1;
-			hrtimer_forward(timer, now, p_backlight->pulse_on);
+			if(!dev->inverted)
+				hrtimer_forward(timer, now, dev->pulse_on);
+			else
+				hrtimer_forward(timer, now, dev->pulse_off);
 		}
 	}
 
@@ -297,6 +304,9 @@ static ssize_t __init softpwm_init(void)
 	p_backlight->duty = 100;
 	p_dcr->duty = 100;
 
+	p_backlight->inverted = 0;
+	p_dcr->inverted = 1;
+
 	/* Set period to 1kHz, 50% duty */
 	p_backlight->period = ktime_set(0, 1000000);
 	p_dcr->period = ktime_set(0, 1000000);
@@ -308,11 +318,11 @@ static ssize_t __init softpwm_init(void)
 	p_dcr->pulse_off = ktime_set(0, 0);
 
 	/* Init gpio as output */
-	sunxi_direction_output(p_backlight, 0);
-	p_backlight->last_state = 0;
+	sunxi_direction_output(p_backlight, p_backlight->inverted);
+	p_backlight->last_state = p_backlight->inverted;
 
-	sunxi_direction_output(p_dcr, 0);
-	p_dcr->last_state = 0;
+	sunxi_direction_output(p_dcr, p_dcr->inverted);
+	p_dcr->last_state = p_dcr->inverted;
 
 
 	hrtimer_init(&p_backlight->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
