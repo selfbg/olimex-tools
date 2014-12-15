@@ -67,28 +67,25 @@ __EOF__
 
 # Now add start script for the actual resize
 cat << __EOF__ > /etc/init.d/resize_sd &&
-#!/bin/bash
+#!/bin/sh
 ### BEGIN INIT INFO
-# Provides:	resize_sd
-# Required-Start:
-# Required-Stop:
+# Provides:resize_sd
+# Required-Start: $local_fs $syslog
+# Required-Stop: $local_fs $syslog
 # Default-Start: 2 3 4 5
 # Default-Stop: 0 1 6
-# Short-Description: Resize filesystem to fill sdcard
-# Description:
+# Short-Description: Resize sdcard
+# Description: Resize filesystem to fill sdcard
 ### END INIT INFO
 
 . /lib/lsb/init-functions
 
-echo "1233333321231231231231231231231432424234234324234"
-
 case "\$1" in
 	start)
-		echo "asdasdasds"
 		log_daemon_msg "Starting resize sdcard" &&
 		resize2fs $partition_name &&
 		rm /etc/init.d/resize_sd &&
-		update-rc.d resize_sd remove
+		update-rc.d resize_sd remove &&
 		log_end_msg \$?
 		;;
 		
