@@ -27,7 +27,7 @@ fi
 
 # Find partition name
 partition_name=$1p$2
-"Partition name: $partition_name"
+echo "Partition name: $partition_name"
 
 if [ ! -b $partition_name ];
 then
@@ -72,28 +72,33 @@ cat << __EOF__ > /etc/init.d/resize_sd &&
 # Provides:	resize_sd
 # Required-Start:
 # Required-Stop:
-# Default-Start: 2 3 4 5 S
-# Default-Stop:
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
 # Short-Description: Resize filesystem to fill sdcard
 # Description:
 ### END INIT INFO
 
 . /lib/lsb/init-functions
 
+echo "1233333321231231231231231231231432424234234324234"
+
 case "\$1" in
 	start)
-	log_daemon_msg "Starting resize sdcard" &&
-	resize2fs $partition_name &&
-	rm /etc/init.d/resize_sd &&
-	update-rc.d resize_sd remove
-	log_end_msg $?
-	;;
+		echo "asdasdasds"
+		log_daemon_msg "Starting resize sdcard" &&
+		resize2fs $partition_name &&
+		rm /etc/init.d/resize_sd &&
+		update-rc.d resize_sd remove
+		log_end_msg \$?
+		;;
 		
 	*)
-	echo "Usage: \$0 start" >&2
-	exit 3
-	;;
+		echo "Usage: \$0 start" >&2
+		exit 1
+		;;
 esac
+
+exit 0
 __EOF__
 
 chmod +x /etc/init.d/resize_sd &&
