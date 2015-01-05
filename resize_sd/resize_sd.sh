@@ -101,4 +101,4 @@ __EOF__
 chmod +x /etc/init.d/resize_sd &&
 update-rc.d resize_sd defaults &&
 echo "Root filesystem will be resized upon the next reboot"
-reboot
+#reboot
