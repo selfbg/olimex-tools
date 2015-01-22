@@ -8,3 +8,4 @@ do
 	echo "Erasing log file: $log"
 	> $log
 done
+
