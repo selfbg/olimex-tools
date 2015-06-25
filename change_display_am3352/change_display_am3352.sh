@@ -29,6 +29,7 @@ device tree, DO NOT USE this script!
 
 MODE can be 480x272, 800x480 and 1024x600 for LCD.
 For VGA - 1368x768 and 800x600.
+
 EOF
 }
 
@@ -137,9 +138,9 @@ do
         set_vga "$OPTARG"
         exit 0
         ;;
-        '?')
-        show_help >&2
-        exit 1;
+        [?])
+        show_help
+        exit 1
         ;;
     esac
 done
