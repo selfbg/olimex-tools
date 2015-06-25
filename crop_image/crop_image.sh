@@ -222,7 +222,7 @@ done
 
 if [ $PARTITIONS -gt 1 ]; then
 #Format final image
-fdisk "$OUTPUT" << __EOF__
+fdisk "$OUTPUT" << __EOF__ >> /dev/null
 d
 2
 d
@@ -239,7 +239,7 @@ ${PARTITION_START[1]}
 w
 __EOF__
 else
-fdisk "$OUTPUT" << __EOF__
+fdisk "$OUTPUT" << __EOF__ >> /dev/null
 d
 n
 
