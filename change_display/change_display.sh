@@ -31,6 +31,8 @@ TEMP_DIR=${TEMP_DIR:="/tmp/screen"}
 MMC_DIR=${MMC_DIR:="/tmp/mmc"}
 SUNXI_DIR=${SUNXI_DIR:="/opt/sunxi-tools"}
 
+BOOT_SOURCE=
+
 # Define tools
 BIN2FEX=${BIN2FEX:="$SUNXI_DIR/bin2fex"}
 FEX2BIN=${FEX2BIN:="$SUNXI_DIR/fex2bin"}
@@ -67,7 +69,7 @@ function find_word
 # Find last match in file
 #
 # Parameters:
-# $1 <File> 
+# $1 <File>
 # $2 <Word> to be searched
 #
 # Return:
@@ -77,7 +79,7 @@ function find_word
 function find_last_word
 {
 	echo $(grep -nr "$2" $1 | tail -1 | awk '{print$1}' FS=":")
-} 
+}
 
 # Insert into rc.local
 function insert_rc_local
@@ -97,14 +99,14 @@ function insert_rc_local
 		cleanup
 		exit
 	fi
-	
+
 	# Insert line
 	sed -i $line'i'"$1" $RCLOCAL
 }
 
 function delete_rc_local
 {
-	local line=$(find_last_word $RCLOCAL $1)	
+	local line=$(find_last_word $RCLOCAL $1)
 	if [ ! -z $line ];
 	then
 		sed -i $line'd' $RCLOCAL
@@ -122,10 +124,10 @@ function change_parameter_in_section
 		cleanup
 		exit
 	fi
-	
+
 	grep -nr "$2" $FEX_FILE | awk '{print$1}' FS=":" | while read -r line;
 	do
-		local var=$line;	
+		local var=$line;
         if [ "$var" -gt "$section" ];
         then
         	# Replace parameter
@@ -133,7 +135,7 @@ function change_parameter_in_section
             break
         fi
     done
-	
+
 }
 # Find parameter and set its value
 # Parameters:
@@ -145,7 +147,7 @@ function change_parameter
 {
 	# Find line number
 	local line=$(find_word $1)
-			
+
 	# Check if parameter is null
 	if [ -z $line ];
 	then
@@ -154,7 +156,7 @@ function change_parameter
 		cleanup
 		exit
 	fi
-	
+
 	# Replace parameter
 	sed -i $line's/.*/'$1' = '$2'/' $FEX_FILE
 }
@@ -168,15 +170,15 @@ function delete_parameter
 {
 	# Find line number
 	local line=$(find_word $1)
-	
+
 	# Check if parameter is null
 	if [ ! -z $line ];
 	then
 		# Delete parameter
 		sed -i $line'd' $FEX_FILE
 	fi
-	
-	
+
+
 }
 
 
@@ -185,7 +187,7 @@ function delete_parameter
 #	$1	<Dialog> to be displayed
 # Return:
 #	0 -> "YES" is pressed
-#	1 -> "NO" is pressed 
+#	1 -> "NO" is pressed
 function display_confirm
 {
 	local __result=$2
@@ -202,7 +204,7 @@ function insert_after
 {
 	# Find word
 	local line=$(find_word $1)
-	
+
 	# Chech if it's unset
 	if [ -z $line ];
 	then
@@ -232,7 +234,7 @@ set_screen_none() {
 }
 
 set_screen_hdmi() {
-    
+
     dialog --backtitle "$BACKTITLE" \
     --menu "Select screen mode:" 0 0 0 \
     0	"480i"		 \
@@ -248,7 +250,7 @@ set_screen_hdmi() {
     10	"1080p60"	 \
     11	"pal"		 \
     14	"ntsc"		2> $tempfile3
-  
+
 	retv=$?
 	choice=$(cat $tempfile3)
 
@@ -320,7 +322,7 @@ set_screen_hdmi() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 		6)
 			display_confirm "Set HDMI to 1080i50 ?" result
     		if [ $result -eq 0 ];
@@ -330,7 +332,7 @@ set_screen_hdmi() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 		7)
 			display_confirm "Set HDMI to 1080i60 ?" result
     		if [ $result -eq 0 ];
@@ -340,7 +342,7 @@ set_screen_hdmi() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 		8)
 			display_confirm "Set HDMI to 1080p24 ?" result
     		if [ $result -eq 0 ];
@@ -350,7 +352,7 @@ set_screen_hdmi() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 		9)
 			display_confirm "Set HDMI to 1080p50 ?" result
     		if [ $result -eq 0 ];
@@ -360,7 +362,7 @@ set_screen_hdmi() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 		10)
 			display_confirm "Set HDMI to 1080p60 ?" result
     		if [ $result -eq 0 ];
@@ -370,7 +372,7 @@ set_screen_hdmi() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 		11)
 			display_confirm "Set HDMI to pal ?" result
     		if [ $result -eq 0 ];
@@ -380,7 +382,7 @@ set_screen_hdmi() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 		14)
 			display_confirm "Set HDMI to ntsc ?" result
     		if [ $result -eq 0 ];
@@ -390,14 +392,14 @@ set_screen_hdmi() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 	esac
-    
-   
+
+
 }
 
 set_screen_vga() {
-    
+
     dialog --backtitle "$BACKTITLE" \
     --menu "Select screen mode:" 0 0 0 \
     0	"1680x1050"	 \
@@ -409,7 +411,7 @@ set_screen_vga() {
     6	"640x480"	 \
     10	"1920x1080"	 \
     11	"1280x720"	 2> $tempfile4
-  
+
 	retv=$?
 	choice=$(cat $tempfile4)
 
@@ -512,10 +514,10 @@ set_screen_vga() {
     			delete_rc_local "softpwm"
     			delete_rc_local "0x01c20118"
 			fi
-    	;;  
+    	;;
 	esac
-    
-   
+
+
 }
 
 set_screen_lcd() {
@@ -525,10 +527,10 @@ set_screen_lcd() {
     "10.3"	"1024x600"	 \
     "15.6"	"1366x768"	 \
     "15.6-FHD"	"1920x1080" 2> $tempfile2
-  
+
 	retv=$?
 	choice=$(cat $tempfile2)
-  
+
 	# Check if ESC of CANCLE are pressed
 	if [ $retv -eq 1 -o $retv -eq 255 ];
 	then
@@ -536,7 +538,7 @@ set_screen_lcd() {
     	cleanup
     	exit
     fi
-    
+
 	case $choice in
     "4.3")
 	    x=480
@@ -649,7 +651,7 @@ set_screen_lcd() {
 	    pwm_used=0
     ;;
     esac
-    
+
     display_confirm "Set LCD to '$x'x'$y' ?" result
     if [ $result -eq 0 ];
 	then
@@ -674,7 +676,7 @@ set_screen_lcd() {
 	   	change_parameter $PARAM_LCD_FRM $lcd_frm
 	   	change_parameter $PARAM_LCD0_BACKLIGHT $lcd_backlight
 	   	change_parameter_in_section "pwm0_para" $PARAM_PWM_USED $pwm_used
-	   	
+
 	   	if [ "$choice" = "15.6" ] || [ "$choice" = "15.6-FHD" ];
 		then
 			# Add pll3 parameter
@@ -684,7 +686,7 @@ set_screen_lcd() {
 			else
 				change_parameter "pll3" "297"
 			fi
-			
+
 			# Change lcd pins to lvds
 			change_parameter "lcdd0" "port:PD00<3><0><default><default>"
 			change_parameter "lcdd1" "port:PD01<3><0><default><default>"
@@ -715,8 +717,8 @@ set_screen_lcd() {
 			delete_parameter "lcdde"
 			delete_parameter "lcdhsync"
 			delete_parameter "lcdvsync"
-			insert_rc_local "insmod $SOFTPWM"	
-			
+			insert_rc_local "insmod $SOFTPWM"
+
 		else
 			# Change pins to parallel port
 			change_parameter "lcdd0" "port:PD00<2><0><default><default>"
@@ -751,19 +753,19 @@ set_screen_lcd() {
 			delete_rc_local "softpwm"
 
 		fi
-		
+
 		if [ "$choice" = "15.6-FHD" ];
 		then
 			insert_rc_local "$DEVMEM 0x01c20118 w 0xc2000000"
-			
+
 		else
 			delete_rc_local "0x01c20118"
-			
+
 		fi
 	fi
 
-	
-    
+
+
 }
 
 function check_tools
@@ -771,69 +773,112 @@ function check_tools
 	# Checking if there is sunxi tools
 	if [ ! -f $FEX2BIN -o ! -f $BIN2FEX ];
 	then
-		echo "There is no sunxi-tools installed."
-		exit
+
+		# In newer image releases sunxi tools are in /usr/bin
+		SUNXI_DIR="/usr/bin"
+		BIN2FEX="$SUNXI_DIR/bin2fex"
+		FEX2BIN="$SUNXI_DIR/fex2bin"
+		if [ ! -f $FEX2BIN -o ! -f $BIN2FEX ];
+		then
+			echo "There is no sunxi-tools installed."
+			exit
+		fi
 	fi
-	
+
 	# Checking for mount directory
 	if [ ! -d $MMC_DIR ];
 	then
 		mkdir -p $MMC_DIR
 	fi
-	
+
 	# Checking for mount directory
 	if [ ! -d $TEMP_DIR ];
 	then
 		mkdir -p $TEMP_DIR
 	fi
-	
+
 	# Checking for devmem
 	if [ ! -f $DEVMEM ];
 	then
-		echo "There is no devmem installed."
+
+		# Check for devmem in /usr/bin
+		DEVMEM="/usr/bin/devmem"
+
+		if [ ! -f $DEVMEM ];
+		then
+			echo "There is no devmem installed."
+			exit
+		fi
+	fi
+}
+
+function check_boot
+{
+	device=$(tail -1 "/etc/fstab" | awk '{print $1}')
+	echo $device
+
+	if [ "$device" == "/dev/mmcblk0p2" ]; then
+		BOOT_SOURCE="MMC"
+	elif [ "$device" == "/dev/nandb" ]; then
+		BOOT_SOURCE="NAND"
+		# Realocate target file
+		BIN_FILE="/boot/script.bin"
+	else
+		echo "Unknown boot device"
 		exit
 	fi
 }
 
 function read_script
 {
-	# Unmount mmcblk0p1
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
-	
-	# Mounting
-	mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
-	
-	# Converting	
-	($BIN2FEX $BIN_FILE > $FEX_FILE) > /dev/null 2>&1
-	
-	# Syncing
-	sync
-	
-	sleep 1
-	
-	# Unmound
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
-	
+	if [ "$BOOT_SOURCE" == "MMC" ]; then
+		# Unmount mmcblk0p1
+		umount /dev/mmcblk0p1 > /dev/null 2>&1
+
+		# Mounting
+		mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
+
+		# Converting
+		($BIN2FEX $BIN_FILE > $FEX_FILE) > /dev/null 2>&1
+
+		# Syncing
+		sync
+
+		sleep 1
+
+		# Unmount
+		umount /dev/mmcblk0p1 > /dev/null 2>&1
+	else
+		# Converting
+		($BIN2FEX $BIN_FILE > $FEX_FILE) > /dev/null 2>&1
+	fi
+
+
 }
 
 function write_script
-{	
-	# Unmount mmcblk0p1
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
-	
-	# Mounting
-	mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
-	
-	# Converting	
-	($FEX2BIN $FEX_FILE $BIN_FILE) > /dev/null 2>&1
-	
-	# Syncing
-	sync
-	
-	sleep 1
-	
-	# Unmound
-	umount /dev/mmcblk0p1 > /dev/null 2>&1
+{
+	if [ "$BOOT_SOURCE" == "MMC" ]; then
+		# Unmount mmcblk0p1
+		umount /dev/mmcblk0p1 > /dev/null 2>&1
+
+		# Mounting
+		mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
+
+		# Converting
+		($FEX2BIN $FEX_FILE $BIN_FILE) > /dev/null 2>&1
+
+		# Syncing
+		sync
+
+		sleep 1
+
+		# Unmound
+		umount /dev/mmcblk0p1 > /dev/null 2>&1
+	else
+		# Converting
+		($FEX2BIN $FEX_FILE $BIN_FILE) > /dev/null 2>&1
+	fi
 }
 
 function cleanup
@@ -854,7 +899,7 @@ function main
 	"LCD" "Set configuration for LCD" \
 	"HDMI" "Set configuration for HDMI" \
 	"VGA" "Set configuration for VGA" 2> $tempfile1
-  
+
 	retv=$?
 	choice=$(cat $tempfile1)
 
@@ -867,7 +912,7 @@ function main
 	fi
 
 	read_script
-	
+
 	# Check selected option
 	case $choice in
 		"None")
@@ -884,20 +929,20 @@ function main
 	    ;;
 	esac
 	trap "rm -f $tempfile1" 0 1 2 5 15
-	
+
 	write_script
-	
+
 	display_confirm "Reboot ?" result
     if [ $result -eq 0 ];
     then
     	cleanup
      	reboot
-	fi	
-	
-}
+	fi
 
+}
+check_boot
 check_tools
+
 main
 cleanup
 clear
-
