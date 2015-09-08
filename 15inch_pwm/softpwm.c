@@ -305,7 +305,7 @@ static ssize_t __init softpwm_init(void)
 	p_dcr->duty = 100;
 
 	p_backlight->inverted = 0;
-	p_dcr->inverted = 1;
+	p_dcr->inverted = 0;
 
 	/* Set period to 1kHz, 50% duty */
 	p_backlight->period = ktime_set(0, 1000000);
