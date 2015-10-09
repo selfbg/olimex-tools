@@ -214,7 +214,7 @@ function insert_after
 		exit
 	else
 		local next_line=$(sed -n $(($line+1))'p' $FEX_FILE)
-		if [[ $next_line != *"$2"* ]];
+		if [[ ! $next_line =~ .*$2.* ]];
 		then
 			sed -i $line'a\'$2' = '$3'' $FEX_FILE
 		fi
@@ -711,12 +711,12 @@ set_screen_lcd() {
 			change_parameter "lcdd20" "port:PD20<3><0><default><default>"
 			change_parameter "lcdd21" "port:PD21<3><0><default><default>"
 			# Delete useless parameters
-			delete_parameter "lcdd22"
-			delete_parameter "lcdd23"
-			delete_parameter "lcdclk"
-			delete_parameter "lcdde"
-			delete_parameter "lcdhsync"
-			delete_parameter "lcdvsync"
+			delete_parameter "lcdd22 = port:PD22"
+			delete_parameter "lcdd23 = port:PD23"
+			delete_parameter "lcdclk = port:PD24"
+			delete_parameter "lcdde = port:PD25"
+			delete_parameter "lcdhsync = port:PD26"
+			delete_parameter "lcdvsync = port:PD27"
 			insert_rc_local "insmod $SOFTPWM"
 
 		else
@@ -744,12 +744,12 @@ set_screen_lcd() {
 			change_parameter "lcdd20" "port:PD20<2><0><default><default>"
 			change_parameter "lcdd21" "port:PD21<2><0><default><default>"
 			# Add needed pins for paralle lcds
-			insert_after "lcdd21" "lcdvsync" "port:PD27<2><0><default><default>"
-			insert_after "lcdd21" "lcdhsync" "port:PD26<2><0><default><default>"
-			insert_after "lcdd21" "lcdde" "port:PD25<2><0><default><default>"
-			insert_after "lcdd21" "lcdclk" "port:PD24<2><0><default><default>"
-			insert_after "lcdd21" "lcdd23" "port:PD23<2><0><default><default>"
 			insert_after "lcdd21" "lcdd22" "port:PD22<2><0><default><default>"
+			insert_after "lcdd22" "lcdd23" "port:PD23<2><0><default><default>"
+			insert_after "lcdd23" "lcdclk" "port:PD24<2><0><default><default>"
+			insert_after "lcdclk" "lcdde" "port:PD25<2><0><default><default>"
+			insert_after "lcdde" "lcdhsync" "port:PD26<2><0><default><default>"
+			insert_after "lcdhsync" "lcdvsync" "port:PD27<2><0><default><default>"
 			delete_rc_local "softpwm"
 
 		fi
