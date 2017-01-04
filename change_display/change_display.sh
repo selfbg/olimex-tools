@@ -1,6 +1,16 @@
 #!/bin/bash
+#
+# Changelog:
+# v1.0.2 - (17 OCT 2016)
+# * Added support for 5inch lcd with ctp
+# * Fixed timings on 15inch FHD
 
-BACKTITLE="OlinuXino screen configurator"
+export NCURSES_NO_UTF8_ACS=1
+
+VERSION="1.0.2"
+BACKTITLE="OlinuXino screen configurator $VERSION"
+
+set -ex
 
 # Due to different versions of the script.fex file,
 # variable names may missmatch. So define them here
@@ -28,10 +38,12 @@ PARAM_PWM_USED="pwm_used"
 
 # Define directories
 TEMP_DIR=${TEMP_DIR:="/tmp/screen"}
-MMC_DIR=${MMC_DIR:="/tmp/mmc"}
+BOOT_DIR=${BOOT_DIR:="/tmp/boot"}
 SUNXI_DIR=${SUNXI_DIR:="/opt/sunxi-tools"}
 
 BOOT_SOURCE=
+BOOT_DEVICE=
+BOOT_MOUNTED=
 
 # Define tools
 BIN2FEX=${BIN2FEX:="$SUNXI_DIR/bin2fex"}
@@ -39,7 +51,7 @@ FEX2BIN=${FEX2BIN:="$SUNXI_DIR/fex2bin"}
 DEVMEM=${DEVMEM:="/opt/mem/devmem"}
 
 # Define script files
-BIN_FILE=${BIN_FILE:="$MMC_DIR/script.bin"}
+BIN_FILE=${BIN_FILE:="script.bin"}
 FEX_FILE=${FEX_FILE:="$TEMP_DIR/script.fex"}
 RCLOCAL=${RCLOCAL:="/etc/rc.local"}
 SOFTPWM=${SOFTPWM:="/opt/softpwm.ko"}
@@ -523,6 +535,7 @@ set_screen_vga() {
 set_screen_lcd() {
 	dialog --backtitle "$BACKTITLE" --menu "Select screen mode:" 0 0 0 \
     "4.3"	"480x272"	 \
+	"5.0"	"800x480"	 \
     "7.0"	"800x480"	 \
     "10.3"	"1024x600"	 \
     "15.6"	"1366x768"	 \
@@ -562,7 +575,7 @@ set_screen_lcd() {
 	    lcd_backlight=250
 	    pwm_used=1
     ;;
-    "7.0")
+	"7.0" | "5.0")
 	    x=800
 	    y=480
 	    freq=33
@@ -632,12 +645,12 @@ set_screen_lcd() {
 	    x=1920
 	    y=1080
 	    freq=152
-	    hbp=100
-	    ht=2226
-	    vbp=23
-	    vt=2284
-	    vspw=0
-	    hspw=0
+	    hbp=306
+	    ht=2376
+	    vbp=62
+	    vt=2314
+	    vspw=9
+	    hspw=60
 	    lcd_if=3
 	    lcd_lvds_bitwidth=1
 	    lcd_lvds_ch=1
@@ -653,8 +666,7 @@ set_screen_lcd() {
     esac
 
     display_confirm "Set LCD to '$x'x'$y' ?" result
-    if [ $result -eq 0 ];
-	then
+    if [ $result -eq 0 ]; then
 	   	change_parameter $PARAM_SCREEN0_OUTPUT_TYPE "1"
 	   	change_parameter $PARAM_LCD_X $x
 	   	change_parameter $PARAM_LCD_Y $y
@@ -677,7 +689,33 @@ set_screen_lcd() {
 	   	change_parameter $PARAM_LCD0_BACKLIGHT $lcd_backlight
 	   	change_parameter_in_section "pwm0_para" $PARAM_PWM_USED $pwm_used
 
-	   	if [ "$choice" = "15.6" ] || [ "$choice" = "15.6-FHD" ];
+		# Ask to enable CTP on 5 inch display
+		if [ "$choice" == "5.0" ]; then
+			display_confirm "Enable touchscreen? " result
+			if [ $result -eq 0 ]; then
+				change_parameter "rtp_used" "0"
+				change_parameter "ctp_used" "1"
+				change_parameter "ctp_name" "\"ft5x_ts\""
+				change_parameter "ctp_twi_id" "2"
+				change_parameter "ctp_twi_addr" "0x38"
+				change_parameter "ctp_screen_max_x" "800"
+				change_parameter "ctp_screen_max_y" "480"
+				change_parameter "ctp_revert_x_flag" "0"
+				change_parameter "ctp_revert_y_flag" "0"
+				change_parameter "ctp_exchange_x_y_flag" "0"
+				change_parameter "ctp_firm" "1"
+				change_parameter "ctp_int_port" "port:PH12<6><default><default><default>"
+				change_parameter "ctp_wakeup" "port:PB13<1><default><default><1>"
+			else
+				change_parameter "rtp_used" "1"
+				change_parameter "ctp_used" "0"
+			fi
+		else
+			change_parameter "rtp_used" "1"
+			change_parameter "ctp_used" "0"
+		fi
+
+	   	if [ "$choice" == "15.6" ] || [ "$choice" == "15.6-FHD" ];
 		then
 			# Add pll3 parameter
 			if [ -z $(find_word "pll3") ];
@@ -786,9 +824,9 @@ function check_tools
 	fi
 
 	# Checking for mount directory
-	if [ ! -d $MMC_DIR ];
+	if [ ! -d $BOOT_DIR ];
 	then
-		mkdir -p $MMC_DIR
+		mkdir -p $BOOT_DIR
 	fi
 
 	# Checking for mount directory
@@ -812,45 +850,48 @@ function check_tools
 	fi
 }
 
+# Try to determinate boot source
 function check_boot
 {
-	device=$(tail -1 "/etc/fstab" | awk '{print $1}')
-	echo $device
+	# Find root source
+	IFS=' ' read -ra ARGS <<< $(cat /proc/cmdline)
+	for i in ${ARGS[@]}; do
+		if [[ $i == "root="* ]];then
+			device=$(awk -F'=' '{print $2}' <<< $i)
+		fi
+	done
 
 	if [ "$device" == "/dev/mmcblk0p2" ]; then
 		BOOT_SOURCE="MMC"
+		BOOT_DEVICE="/dev/mmcblk0p1"
+	elif [ "$device" == "/dev/mmcblk1p2" ]; then
+		BOOT_SOURCE="EMMC"
+		BOOT_DEVICE="/dev/mmcblk1p1"
 	elif [ "$device" == "/dev/nandb" ]; then
 		BOOT_SOURCE="NAND"
-		# Realocate target file
-		BIN_FILE="/boot/script.bin"
+		BOOT_DEVICE="/dev/nanda"
 	else
 		echo "Unknown boot device"
 		exit
 	fi
+
+	# Check if boot partition is mounted
+	BOOT_MOUNTED=$(df | grep "$BOOT_DEVICE" | awk -F " " '{print $6}')
 }
 
 function read_script
 {
-	if [ "$BOOT_SOURCE" == "MMC" ]; then
-		# Unmount mmcblk0p1
-		umount /dev/mmcblk0p1 > /dev/null 2>&1
+	# Check if boot directory is alredy mounted
+	if [ -z $BOOT_MOUNTED ]; then
 
-		# Mounting
-		mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
-
-		# Converting
-		($BIN2FEX $BIN_FILE > $FEX_FILE) > /dev/null 2>&1
-
-		# Syncing
+		mount $BOOT_DEVICE $BOOT_DIR > /dev/null 2>&1
+		$BIN2FEX $BOOT_DIR/$BIN_FILE > $FEX_FILE
 		sync
+		umount $BOOT_DEVICE > /dev/null 2>&2
 
-		sleep 1
-
-		# Unmount
-		umount /dev/mmcblk0p1 > /dev/null 2>&1
 	else
-		# Converting
-		($BIN2FEX $BIN_FILE > $FEX_FILE) > /dev/null 2>&1
+		# Boot partition is mounted
+		$BIN2FEX $BOOT_MOUNTED/$BIN_FILE > $FEX_FILE
 	fi
 
 
@@ -858,33 +899,24 @@ function read_script
 
 function write_script
 {
-	if [ "$BOOT_SOURCE" == "MMC" ]; then
-		# Unmount mmcblk0p1
-		umount /dev/mmcblk0p1 > /dev/null 2>&1
+	# Check if boot directory is alredy mounted
+	if [ -z $BOOT_MOUNTED ]; then
 
-		# Mounting
-		mount /dev/mmcblk0p1 $MMC_DIR > /dev/null 2>&1
-
-		# Converting
-		($FEX2BIN $FEX_FILE $BIN_FILE) > /dev/null 2>&1
-
-		# Syncing
+		mount $BOOT_DEVICE $BOOT_DIR > /dev/null 2>&1
+		($FEX2BIN $FEX_FILE > $BIN_FILE) > /dev/null 2>&1
 		sync
+		umount $BOOT_DEVICE > /dev/null 2>&2
 
-		sleep 1
-
-		# Unmound
-		umount /dev/mmcblk0p1 > /dev/null 2>&1
 	else
-		# Converting
-		($FEX2BIN $FEX_FILE $BIN_FILE) > /dev/null 2>&1
+		# Boot partition is mounted
+		$FEX2BIN $FEX_FILE > $BOOT_MOUNTED/$BIN_FILE
 	fi
 }
 
 function cleanup
 {
 	rm -rf $TEMP_DIR
-	rm -rf $MMC_DIR
+	rm -rf $BOOT_DIR
 
 	rm -f $tempfile1
 	rm -f $tempfile2
@@ -940,6 +972,7 @@ function main
 	fi
 
 }
+
 check_boot
 check_tools
 
