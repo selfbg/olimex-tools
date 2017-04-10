@@ -1,13 +1,16 @@
 #!/bin/bash
 #
 # Changelog:
+# v1.0.3 - (10 APR 2017)
+# * Fixed support for 5 inch display
+#
 # v1.0.2 - (17 OCT 2016)
 # * Added support for 5inch lcd with ctp
 # * Fixed timings on 15inch FHD
 
 export NCURSES_NO_UTF8_ACS=1
 
-VERSION="1.0.2"
+VERSION="1.0.3"
 BACKTITLE="OlinuXino screen configurator $VERSION"
 
 set -ex
@@ -704,8 +707,42 @@ set_screen_lcd() {
 				change_parameter "ctp_revert_y_flag" "0"
 				change_parameter "ctp_exchange_x_y_flag" "0"
 				change_parameter "ctp_firm" "1"
-				change_parameter "ctp_int_port" "port:PH12<6><default><default><default>"
-				change_parameter "ctp_wakeup" "port:PB13<1><default><default><1>"
+
+				# Set pins depending on board
+
+
+				dialog --backtitle "$BACKTITLE" --menu "Select board:" 0 0 0 \
+				"1"	"A20-OLinuXino-MICRO"	 \
+				"2"	"A20-OLinuXino-Lime2"	 \
+				"3"	"A20-SOM-EVB" 2> $tempfile2
+
+				retv=$?
+				choice=$(cat $tempfile2)
+
+				# Check if ESC of CANCLE are pressed
+				if [ $retv -eq 1 -o $retv -eq 255 ];
+				then
+					clear
+					cleanup
+					exit
+				fi
+
+				case $choice in
+					"1")
+						change_parameter "ctp_int_port" "port:PH12<6><default><default><default>"
+						change_parameter "ctp_wakeup" "port:PB13<1><default><default><1>"
+					;;
+
+					"2")
+						change_parameter "ctp_int_port" "port:PH10<6><default><default><default>"
+						change_parameter "ctp_wakeup" "port:PH11<1><default><default><1>"
+					;;
+
+					"3")
+						change_parameter "ctp_int_port" "port:PH10<6><default><default><default>"
+						change_parameter "ctp_wakeup" "port:PH11<1><default><default><1>"
+					;;
+				esac
 			else
 				change_parameter "rtp_used" "1"
 				change_parameter "ctp_used" "0"
