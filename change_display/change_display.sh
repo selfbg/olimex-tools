@@ -947,6 +947,7 @@ function write_script
 	else
 		# Boot partition is mounted
 		$FEX2BIN $FEX_FILE > $BOOT_MOUNTED/$BIN_FILE
+		sync
 	fi
 }
 
